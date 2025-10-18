@@ -1,0 +1,1 @@
+"use strict";(self.__LOADABLE_LOADED_CHUNKS__=self.__LOADABLE_LOADED_CHUNKS__||[]).push([["17961"],{813211:function(e,t,_){_.r(t),_.d(t,{matcher:function(){return l}});var r=_(582997);let l=e=>{let{threadSelected:t,threadSelectModeScene:_}=e;if(t&&"Collection"===_)return r.threadCollectionChatHeaderPlugin}}}]);

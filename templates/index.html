@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片链接提取器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .input-section {
+            margin-bottom: 40px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .extract-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .extract-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .extract-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .stat-item {
+            flex: 1;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            display: block;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .image-card {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .image-preview {
+            width: 100%;
+            height: 200px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .image-preview:hover img {
+            transform: scale(1.05);
+        }
+
+        .image-info {
+            padding: 15px;
+        }
+
+        .image-url {
+            font-size: 0.9em;
+            color: #667eea;
+            word-break: break-all;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .image-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+
+        .image-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .no-images {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .no-images i {
+            font-size: 3em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .suggestions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #e9ecef;
+        }
+
+        .suggestions h4 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .suggestion-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .suggestion-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .suggestion-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .images-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖼️ 图片链接提取器</h1>
+            <p>从任何网页中快速提取所有图片链接</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <div class="input-group">
+                    <input type="url" id="urlInput" class="url-input" placeholder="请输入网页链接或直接图片链接，例如：https://example.com 或 https://example.com/image.jpg">
+                    <button id="extractBtn" class="extract-btn">提取图片</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;color:#333;font-size:14px;">
+                    <input type="checkbox" id="renderToggle">
+                    <label for="renderToggle">渲染模式（适用于懒加载/脚本加载页面）</label>
+                </div>
+                <div style="margin-top:8px;">
+                    <textarea id="cookieInput" placeholder="可选：粘贴 Cookie（仅用于需要登录的网站，例如 doubao.com）" style="width:100%;height:60px;border:1px solid #e1e5e9;border-radius:8px;padding:8px;font-size:13px;"></textarea>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.9em; color: #6c757d;">
+                    💡 支持两种模式：网页链接（提取页面中的所有图片）或直接图片链接（分析单个图片）
+                </div>
+            </div>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>正在分析网页，请稍候...</p>
+            </div>
+
+            <div id="error" class="error" style="display: none;"></div>
+            
+            <div id="suggestions" class="suggestions" style="display: none;">
+                <h4>💡 建议尝试的网站：</h4>
+                <div class="suggestion-links">
+                    <button class="suggestion-btn" onclick="tryUrl('https://unsplash.com')">Unsplash (免费图片)</button>
+                    <button class="suggestion-btn" onclick="tryUrl('https://pixabay.com')">Pixabay (免费图片)</button>
+                    <button class="suggestion-btn" onclick="tryUrl('https://www.pexels.com')">Pexels (免费图片)</button>
+                    <button class="suggestion-btn" onclick="tryUrl('https://example.com')">Example.com (测试网站)</button>
+                </div>
+            </div>
+
+            <div id="results" class="results">
+                <div id="stats" class="stats">
+                    <div class="stat-item">
+                        <span class="stat-number" id="totalFound">0</span>
+                        <span class="stat-label">发现图片</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="validImages">0</span>
+                        <span class="stat-label">有效图片</span>
+                    </div>
+                </div>
+
+                <div id="imagesContainer">
+                    <!-- 图片卡片将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const extractBtn = document.getElementById('extractBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+        const totalFound = document.getElementById('totalFound');
+        const validImages = document.getElementById('validImages');
+        const imagesContainer = document.getElementById('imagesContainer');
+        const suggestions = document.getElementById('suggestions');
+        const renderToggle = document.getElementById('renderToggle');
+
+        extractBtn.addEventListener('click', extractImages);
+        urlInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                extractImages();
+            }
+        });
+
+        async function extractImages() {
+            const url = urlInput.value.trim();
+            if (!url) {
+                showError('请输入网页链接');
+                return;
+            }
+
+            setLoading(true);
+            hideError();
+            hideResults();
+
+            try {
+                const response = await fetch(renderToggle.checked ? '/extract_rendered' : '/extract', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url, cookie: document.getElementById('cookieInput').value.trim() })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    showResults(data);
+                }
+            } catch (err) {
+                showError('网络错误，请重试');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function setLoading(isLoading) {
+            extractBtn.disabled = isLoading;
+            loading.style.display = isLoading ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+            
+            // 如果是403错误，显示建议
+            if (message.includes('403') || message.includes('Forbidden')) {
+                suggestions.style.display = 'block';
+            } else {
+                suggestions.style.display = 'none';
+            }
+        }
+
+        function hideError() {
+            error.style.display = 'none';
+            suggestions.style.display = 'none';
+        }
+
+        function tryUrl(url) {
+            urlInput.value = url;
+            extractImages();
+        }
+
+        function showResults(data) {
+            totalFound.textContent = data.total_found;
+            validImages.textContent = data.valid_images;
+
+            if (data.images.length === 0) {
+                imagesContainer.innerHTML = `
+                    <div class="no-images">
+                        <div>📷</div>
+                        <h3>未找到有效图片</h3>
+                        <p>该网页可能没有图片或图片链接无效</p>
+                    </div>
+                `;
+            } else {
+                imagesContainer.innerHTML = data.images.map(img => createImageCard(img)).join('');
+            }
+
+            results.style.display = 'block';
+        }
+
+        function hideResults() {
+            results.style.display = 'none';
+        }
+
+        function createImageCard(img) {
+            const sizeText = img.size ? formatFileSize(img.size) : '未知';
+            const dimensions = (img.width !== 'unknown' && img.height !== 'unknown') 
+                ? `${img.width} × ${img.height}` 
+                : '未知尺寸';
+
+            return `
+                <div class="image-card">
+                    <div class="image-preview">
+                        <img src="${img.url}" alt="${img.alt}" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div style="display: none; flex-direction: column; align-items: center; justify-content: center; color: #6c757d;">
+                            <div style="font-size: 2em; margin-bottom: 10px;">🖼️</div>
+                            <div>图片加载失败</div>
+                        </div>
+                    </div>
+                    <div class="image-info">
+                        <div class="image-url" title="${img.url}">${img.url}</div>
+                        <div class="image-details">
+                            <div><strong>格式:</strong> ${img.format || '未知'}</div>
+                            <div><strong>大小:</strong> ${sizeText}</div>
+                            <div><strong>尺寸:</strong> ${dimensions}</div>
+                            <div><strong>Alt:</strong> ${img.alt || '无'}</div>
+                        </div>
+                        <div class="image-actions">
+                            <a href="${img.url}" target="_blank" class="btn btn-primary">查看原图</a>
+                            <a href="/download/${encodeURIComponent(img.url)}" class="btn btn-secondary">下载</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>
+

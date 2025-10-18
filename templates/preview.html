@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Markdown 合并 · 句尾锚点 · 文后挂图（不改字）</title>
+<style>
+  :root{--bg:#f6f7fb;--card:#fff;--txt:#111;--muted:#6b7280;--brand:#2563eb;--ok:#10b981;--warn:#b91c1c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;height:100vh;overflow:hidden;color:var(--txt)}
+  .container{display:grid;grid-template-columns:1fr 2fr;gap:18px;height:100vh;padding:18px}
+  .panel{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;min-height:0}
+  h3{margin:0 0 8px;font-size:16px}
+  .preview{flex:1;overflow:auto;border:1px dashed #e5e7eb;border-radius:10px;padding:14px;background:#fff}
+  .preview img{max-width:100%;display:block;margin:10px 0;border-radius:8px}
+  .right{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:.6fr auto .45fr;gap:18px;height:calc(100vh - 36px)}
+  textarea{flex:1;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;font-family:ui-monospace,Menlo,monospace;resize:none;min-height:0;line-height:1.5}
+  .row{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+  .btn{border:none;border-radius:10px;padding:8px 14px;background:var(--brand);color:#fff;cursor:pointer}
+  .btn:hover{filter:brightness(.96)}
+  .btn-outline{background:#fff;color:#374151;border:1px solid #d1d5db}
+  .btn-ok{background:var(--ok)}
+  .grid-full{grid-column:1/3}
+  .muted{color:var(--muted);font-size:12px}
+  .error{display:none;margin-bottom:10px;padding:8px 12px;border-radius:10px;background:#FEF2F2;border:1px solid #FCA5A5;color:var(--warn)}
+  .tag{font-size:12px;color:#111;background:#eef2ff;border:1px solid #e0e7ff;border-radius:8px;padding:3px 8px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="panel">
+    <h3>合并后的渲染</h3>
+    <div id="errorBox" class="error"></div>
+    <div id="renderedPreview" class="preview"></div>
+  </div>
+
+  <div class="right">
+    <div class="panel">
+      <div class="row">
+        <h3 style="flex:1">复制 1（文本一 / 基线）</h3>
+        <button class="btn btn-outline" onclick="clearLeft()">清空</button>
+      </div>
+      <textarea id="leftMarkdown" placeholder="粘贴【文本一】（最终输出将逐字保持一致，不改任何字）…"></textarea>
+      <div class="muted" style="margin-top:6px">仅插入图片行；文字一字不改。图片始终插在对应句子的<strong>下一行</strong>。</div>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <h3 style="flex:1">复制 2（文本二 / 原文+图片）</h3>
+        <button class="btn btn-outline" onclick="clearRight()">清空</button>
+      </div>
+      <textarea id="rightMarkdown" placeholder="粘贴【文本二】：一段文字 → 一张/几张图 → 下一段文字…（无需 caption）"></textarea>
+      <div class="muted" style="margin-top:6px">算法只按顺序与句尾匹配，不依赖关键词或 caption。</div>
+    </div>
+
+    <div class="panel grid-full" style="align-items:flex-start">
+      <div class="row" style="flex-wrap:wrap;gap:12px">
+        <button class="btn" onclick="mergeNow()">合并</button>
+        <button class="btn btn-ok" onclick="copyMerged()">复制合并结果</button>
+        <label class="tag">模式：句尾锚点（固定）</label>
+      </div>
+    </div>
+
+    <div class="panel grid-full">
+      <h3 style="margin-bottom:6px">合并后的 Markdown</h3>
+      <textarea id="mergedMarkdown" placeholder="结果会出现在这里…"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Markdown 预览（简单渲染） ---------- */
+function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function renderMarkdown(md){
+  if(!md) return '';
+  md = md.replace(/```([^`\n]*)\n([\s\S]*?)```/g,(m,lang,code)=>'<pre><code>'+escapeHtml(code)+'</code></pre>');
+  md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img alt="$1" src="$2">');
+  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  md = md.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');
+  md = md.replace(/^######\s+(.*)$/gm,'<h6>$1</h6>').replace(/^#####\s+(.*)$/gm,'<h5>$1</h5>')
+         .replace(/^####\s+(.*)$/gm,'<h4>$1</h4>').replace(/^###\s+(.*)$/gm,'<h3>$1</h3>')
+         .replace(/^##\s+(.*)$/gm,'<h2>$1</h2>').replace(/^#\s+(.*)$/gm,'<h1>$1</h1>');
+  md = md.replace(/^\>\s?(.*)$/gm,'<blockquote>$1</blockquote>');
+  md = md.replace(/^(?:\s*[-*+]\s+.+\n?)+/gm, block=>{
+    const items = block.trim().split(/\n/).map(l=>l.replace(/^\s*[-*+]\s+/,'').trim());
+    return '<ul>' + items.map(it=>'<li>'+it+'</li>').join('') + '</ul>';
+  });
+  md = md.replace(/^(?:\s*\d+\.\s+.+\n?)+/gm, block=>{
+    const items = block.trim().split(/\n/).map(l=>l.replace(/^\s*\d+\.\s+/,'').trim());
+    return '<ol>' + items.map(it=>'<li>'+it+'</li>').join('') + '</ol>';
+  });
+  md = md.replace(/`([^`]+)`/g,'<code>$1</code>');
+  return md.split(/\n/).map(l=>{
+    if(/^<h\d|^<ul>|^<ol>|^<pre>|^<blockquote>|^<img/.test(l)) return l;
+    if(!l.trim()) return '';
+    return '<p>'+l+'</p>';
+  }).join('\n');
+}
+
+/* ---------- 基础工具 ---------- */
+const IMG_MD_LINE=/!\[[^\]]*\]\(([^)]+)\)/;
+const IMG_URL=/\(([^)]+)\)/;
+function sanitize(s){return (s||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');}
+function norm(s){
+  return (s||'')
+    .replace(/\s+/g,'')                // 去所有空白
+    .replace(/[""]/g,'"')
+    .replace(/['']/g,"'")
+    .replace(/，/g,',').replace(/。/g,'.').replace(/！/g,'!').replace(/？/g,'?')
+    .replace(/：/g,':').replace(/；/g,';').replace(/（/g,'(').replace(/）/g,')');
+}
+
+/* 将文本二切成：文字块 / 图片块（保持顺序）；不看 caption */
+function parseText2Blocks(text2){
+  const lines=sanitize(text2).split('\n');
+  const blocks=[]; let txt=[], imgs=[];
+  const flushTxt=()=>{ const raw = txt.join('\n'); if(raw.replace(/\s+/g,'').length>0) blocks.push({type:'txt', raw}); txt=[]; };
+  const flushImgs=()=>{ if(imgs.length>0) blocks.push({type:'imgs', urls:imgs.slice()}); imgs=[]; };
+
+  for(const line of lines){
+    const t=line.trim();
+    if(IMG_MD_LINE.test(t)){
+      flushTxt();
+      const m=t.match(IMG_URL); const url=m?m[1].trim():'';
+      if(url) imgs.push(url);
+    }else{
+      if(imgs.length) flushImgs();
+      txt.push(line);
+    }
+  }
+  flushTxt(); flushImgs();
+  return blocks;
+}
+
+/* 在文本一（逐行）里，用"最后一句"查找准确的锚点行 */
+function findAnchorLineIndex(text1Lines, fromIndex, paragraphRaw){
+  const p = sanitize(paragraphRaw);
+  // 取最后一句（按常见中文/英文句末分隔）
+  const sentences = p.split(/(?<=[。！？?!])\s*|\n/).map(s=>s.trim()).filter(s=>s.length>0);
+  const last = sentences.length ? sentences[sentences.length-1] : p.trim();
+  const lastNorm = norm(last);
+  const linesNorm = text1Lines.map(norm);
+
+  // 1) 直接包含匹配：从 fromIndex 开始向后找，优先保证顺序
+  for(let i=fromIndex;i<linesNorm.length;i++){
+    if(lastNorm && linesNorm[i].includes(lastNorm)) return i;
+  }
+  // 2) 全局兜底：整篇内任意包含（避免 fromIndex 偏移导致漏匹配）
+  for(let i=0;i<linesNorm.length;i++){
+    if(lastNorm && linesNorm[i].includes(lastNorm)) return i;
+  }
+  // 3) 取末尾子串（长度从 30 降到 12），做包含匹配
+  const base = norm(paragraphRaw);
+  for(let L=30; L>=12; L-=3){
+    if(base.length<L) continue;
+    const sub = base.slice(-L);
+    for(let i=fromIndex;i<linesNorm.length;i++){
+      if(linesNorm[i].includes(sub)) return i;
+    }
+    for(let i=0;i<linesNorm.length;i++){
+      if(linesNorm[i].includes(sub)) return i;
+    }
+  }
+  // 4) 兜底：返回 fromIndex 之后的最近非空行；如无则最后一个非空行
+  for(let i=fromIndex;i<text1Lines.length;i++){
+    if(text1Lines[i].trim()) return i;
+  }
+  for(let i=text1Lines.length-1;i>=0;i--){
+    if(text1Lines[i].trim()) return i;
+  }
+  return 0;
+}
+
+/* 主合并：按"句尾锚点 → 文后挂图"，文本一一字不改 */
+function mergeBySentenceAnchor(text1, text2){
+  const t1raw = sanitize(text1);
+  const t1lines = t1raw.split('\n');
+  const plan = new Map(); // anchorLine -> [urls]
+  const blocks = parseText2Blocks(text2);
+
+  let fromIndex = 0;      // 为保证顺序，下一次优先从这里往后找
+  let lastAnchor = null;  // 最近一次文字锚点
+
+  for(const b of blocks){
+    if(b.type==='txt'){
+      // 更新"最近一次文字锚点"
+      const i = findAnchorLineIndex(t1lines, fromIndex, b.raw);
+      lastAnchor = i;
+      fromIndex = Math.max(i, fromIndex); // 向前推进
+    }else if(b.type==='imgs'){
+      // 将整组图片挂到"最近一次文字锚点"之后；若还没见到文字，则挂到全文第一处非空行之后
+      let i = (lastAnchor!=null) ? lastAnchor : findAnchorLineIndex(t1lines, 0, '');
+      if(!plan.has(i)) plan.set(i,[]);
+      plan.get(i).push(...b.urls);
+    }
+  }
+
+  // 生成输出：只在锚点行之后插入图片行；文本一原样不改
+  const out=[];
+  for(let i=0;i<t1lines.length;i++){
+    out.push(t1lines[i]);
+    if(plan.has(i)){
+      const urls = plan.get(i);
+      for(const u of urls) out.push(`![](${u})`);
+    }
+  }
+  const merged = out.join('\n');
+
+  // 校验：把图片行去掉后，应该与文本一逐字相同
+  const stripped = merged.split('\n').filter(l=>!IMG_MD_LINE.test(l.trim())).join('\n');
+  const same = (stripped === t1raw);
+
+  return { merged, same };
+}
+
+/* ---------- 交互 ---------- */
+function showError(msg){ const b=document.getElementById('errorBox'); b.textContent=msg||''; b.style.display=msg?'block':'none'; }
+function clearLeft(){ document.getElementById('leftMarkdown').value=''; mergeNow(); }
+function clearRight(){ document.getElementById('rightMarkdown').value=''; mergeNow(); }
+
+function copyMerged(){
+  const v=document.getElementById('mergedMarkdown').value||'';
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(v).then(()=>showError('已复制到剪贴板')).catch(()=>showError('复制失败：浏览器限制'));
+  }else{
+    const ta=document.getElementById('mergedMarkdown'); ta.select(); document.execCommand('copy'); showError('已尝试复制（旧接口）');
+  }
+  setTimeout(()=>showError(''),1400);
+}
+
+function mergeNow(){
+  try{
+    const left  = sanitize(document.getElementById('leftMarkdown').value||'');
+    const right = sanitize(document.getElementById('rightMarkdown').value||'');
+
+    if(!left.trim()){
+      document.getElementById('mergedMarkdown').value='';
+      document.getElementById('renderedPreview').innerHTML='';
+      showError('');
+      return;
+    }
+    if(!right.trim()){
+      document.getElementById('mergedMarkdown').value = left;
+      document.getElementById('renderedPreview').innerHTML = renderMarkdown(left);
+      showError('');
+      return;
+    }
+
+    const { merged, same } = mergeBySentenceAnchor(left, right);
+    if(!same){
+      showError('⚠️ 校验未通过：去掉图片后与【文本一】不完全一致（请检查是否误改了文本一的字/空格/空行）。');
+    }else{
+      showError('');
+    }
+    document.getElementById('mergedMarkdown').value = merged;
+    document.getElementById('renderedPreview').innerHTML = renderMarkdown(merged);
+  }catch(e){
+    console.error(e);
+    showError('运行出错：' + e.message);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const tip = [
+    '# 使用说明｜句尾锚点',
+    '1) 以【文本一】为基线，只插入图片行，不改任何字；',
+    '2) 每组图片挂到它前面那段文字的"最后一句"所在行的下一行；',
+    '3) 不依赖 caption/关键词；用句尾匹配 + 子串兜底定位；',
+    '4) 若文本二开头就有图，也会挂到文本一第一处非空行之后；',
+    '5) 自带校验：去图后必须和文本一完全一致。'
+  ].join('\n');
+  document.getElementById('renderedPreview').innerHTML = renderMarkdown(tip);
+  document.getElementById('leftMarkdown').addEventListener('input', mergeNow);
+  document.getElementById('rightMarkdown').addEventListener('input', mergeNow);
+  document.getElementById('mergedMarkdown').addEventListener('input', ()=> {
+    document.getElementById('renderedPreview').innerHTML = renderMarkdown(document.getElementById('mergedMarkdown').value||'');
+  });
+});
+</script>
+</body>
+</html>
