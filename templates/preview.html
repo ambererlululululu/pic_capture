@@ -4,16 +4,119 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Markdown 合并 · 句尾锚点 · 文后挂图（不改字）</title>
-<style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+    <style>
   :root{--bg:#f6f7fb;--card:#fff;--txt:#111;--muted:#6b7280;--brand:#2563eb;--ok:#10b981;--warn:#b91c1c}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;height:100vh;overflow:hidden;color:var(--txt)}
-  .container{display:grid;grid-template-columns:1fr 2fr;gap:18px;height:100vh;padding:18px}
-  .panel{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;min-height:0}
-  h3{margin:0 0 8px;font-size:16px}
-  .preview{flex:1;overflow:auto;border:1px dashed #e5e7eb;border-radius:10px;padding:14px;background:#fff}
+  body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;min-height:100vh;color:var(--txt);display:flex;flex-direction:column}
+  .header{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:18px;margin:18px 18px 0;display:flex;justify-content:space-between;align-items:center}
+  .header h1{margin:0;font-size:24px;color:var(--brand)}
+  .header p{margin:8px 0 0;color:var(--muted);font-size:14px}
+  .header-right{display:flex;align-items:center;gap:20px}
+  .query-section{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:15px 18px;margin:0 18px;display:flex;flex-direction:column;gap:12px}
+  .query-display{display:flex;align-items:center;gap:10px}
+  .link-display{display:flex;align-items:center;gap:10px}
+  .query-label{font-size:16px;color:var(--muted);font-weight:600}
+  .query-text{font-size:16px;color:var(--txt);background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;padding:8px 12px;flex:1;min-width:200px;font-weight:500}
+  .copy-btn{background:var(--brand);color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;transition:all 0.2s ease}
+  .copy-btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+  .navigation-buttons{display:flex;gap:10px;justify-content:center}
+  .nav-btn{background:#f8f9fa;color:var(--txt);border:1px solid #e9ecef;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:14px;transition:all 0.2s ease;flex:1;min-width:80px}
+  .nav-btn:hover{background:#e9ecef;transform:translateY(-1px)}
+  .prev-btn{border-color:var(--brand);color:var(--brand)}
+  .prev-btn:hover{background:var(--brand);color:#fff}
+  .next-btn{border-color:var(--ok);color:var(--ok)}
+  .next-btn:hover{background:var(--ok);color:#fff}
+  .upload-section{display:flex;align-items:center;gap:15px}
+  .upload-btn{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-size:14px;transition:all 0.2s ease}
+  .upload-btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+  .file-info{background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;padding:8px 12px;font-size:12px;color:var(--muted);width:200px;min-height:20px;transition:all 0.2s ease}
+  .progress-section{display:flex;align-items:center;gap:15px;justify-content:flex-end}
+  .progress-bar{width:180px;height:8px;background:#e9ecef;border-radius:4px;overflow:hidden}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--brand),var(--ok));width:0%;transition:width 0.3s ease;border-radius:4px}
+  .progress-text{font-size:12px;color:var(--muted);min-width:70px;text-align:right}
+  .container{display:grid;grid-template-columns:1fr 2fr;gap:8px;padding:18px;flex:1}
+  .excel-display-section{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:18px;margin:0 18px;display:flex;flex-direction:column}
+  .excel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;padding-bottom:10px;border-bottom:1px solid #e9ecef}
+  .excel-header h3{margin:0;font-size:18px;color:var(--brand)}
+  .excel-header-buttons{display:flex;align-items:center;gap:10px}
+  .download-btn{background:var(--ok);color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;transition:all 0.2s ease}
+  .download-btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+  .close-btn{background:none;border:none;font-size:24px;color:var(--muted);cursor:pointer;padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all 0.2s ease}
+  .close-btn:hover{background:#f8f9fa;color:var(--warn)}
+  .excel-content{flex:1;overflow:auto;max-height:400px}
+  .no-file-message{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center;color:var(--muted)}
+  .no-file-icon{font-size:48px;margin-bottom:15px;opacity:0.6}
+  .no-file-message p{margin:0 0 8px;font-size:18px;color:var(--txt)}
+  .no-file-hint{font-size:14px;color:var(--muted)}
+  .file-info-display{display:flex;flex-direction:column;align-items:center;padding:30px 20px;text-align:center}
+  .file-info-icon{font-size:48px;margin-bottom:15px;opacity:0.8}
+  .file-info-display h4{margin:0 0 20px;font-size:20px;color:var(--brand)}
+  .file-details{background:#f8f9fa;border-radius:8px;padding:20px;margin-bottom:20px;text-align:left;min-width:300px}
+  .file-details p{margin:0 0 10px;font-size:14px;color:var(--txt)}
+  .file-details p:last-child{margin-bottom:0}
+  .processing-note{background:#e3f2fd;border:1px solid #bbdefb;border-radius:8px;padding:15px;color:var(--brand)}
+  .processing-note p{margin:0 0 5px;font-size:16px;font-weight:500}
+  .processing-note span{font-size:14px;opacity:0.8}
+  .error-message{display:flex;flex-direction:column;align-items:center;padding:30px 20px;text-align:center;color:var(--warn)}
+  .error-icon{font-size:48px;margin-bottom:15px}
+  .error-message h4{margin:0 0 10px;font-size:18px;color:var(--warn)}
+  .error-message p{margin:0;font-size:14px;color:var(--muted)}
+  .empty-message{display:flex;flex-direction:column;align-items:center;padding:30px 20px;text-align:center;color:var(--muted)}
+  .empty-icon{font-size:48px;margin-bottom:15px;opacity:0.6}
+  .empty-message h4{margin:0 0 10px;font-size:18px;color:var(--txt)}
+  .empty-message p{margin:0;font-size:14px;color:var(--muted)}
+  .excel-table{width:100%;border-collapse:collapse;font-size:14px}
+  .excel-table th,.excel-table td{border:1px solid #e9ecef;padding:8px 12px;text-align:left;vertical-align:top}
+  .excel-table th{background:#f8f9fa;font-weight:600;color:var(--txt)}
+  .excel-table td{background:#fff}
+  .excel-table tr:nth-child(even) td{background:#fafafa}
+  .markdown-cell{max-width:400px;word-wrap:break-word}
+  .markdown-cell p{margin:0 0 8px;line-height:1.4}
+  .markdown-cell p:last-child{margin-bottom:0}
+  .markdown-cell img{max-width:100%;height:auto;border-radius:4px;margin:4px 0}
+  .markdown-cell a{color:var(--brand);text-decoration:none}
+  .markdown-cell a:hover{text-decoration:underline}
+  
+  /* 增强的Markdown渲染样式 */
+  .markdown-h1{font-size:28px;font-weight:700;color:var(--txt);margin:24px 0 16px;line-height:1.3;border-bottom:2px solid var(--brand);padding-bottom:8px}
+  .markdown-h2{font-size:24px;font-weight:600;color:var(--txt);margin:20px 0 12px;line-height:1.4}
+  .markdown-h3{font-size:20px;font-weight:600;color:var(--brand);margin:16px 0 10px;line-height:1.4}
+  .markdown-h4{font-size:18px;font-weight:600;color:var(--txt);margin:14px 0 8px;line-height:1.4}
+  .markdown-h5{font-size:16px;font-weight:600;color:var(--txt);margin:12px 0 6px;line-height:1.4}
+  .markdown-h6{font-size:14px;font-weight:600;color:var(--muted);margin:10px 0 4px;line-height:1.4}
+  .markdown-p{margin:8px 0;line-height:1.6;color:var(--txt)}
+  .markdown-ul,.markdown-ol{margin:12px 0;padding-left:24px}
+  .markdown-li{margin:6px 0;line-height:1.5;color:var(--txt)}
+  .markdown-ul .markdown-li{list-style-type:disc}
+  .markdown-ol .markdown-li{list-style-type:decimal}
+  .markdown-blockquote{border-left:4px solid var(--brand);background:#f8f9fa;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;color:var(--muted);font-style:italic}
+  .markdown-code{background:#f1f3f4;color:var(--warn);padding:2px 6px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:0.9em}
+  .preview .markdown-h1,.preview .markdown-h2,.preview .markdown-h3,.preview .markdown-h4,.preview .markdown-h5,.preview .markdown-h6,
+  .preview .markdown-p,.preview .markdown-ul,.preview .markdown-ol,.preview .markdown-li,.preview .markdown-blockquote,.preview .markdown-code{color:inherit}
+  .web-link{color:var(--brand);text-decoration:none;word-break:break-all}
+  .web-link:hover{text-decoration:underline}
+  .clickable-query-code{color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important}
+  .clickable-query-code:hover{color:#1d4ed8 !important;text-decoration:underline !important}
+  .excel-table .clickable-query-code{color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important}
+  .excel-table .clickable-query-code:hover{color:#1d4ed8 !important;text-decoration:underline !important}
+  .excel-table td .clickable-query-code{color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important}
+  .excel-table td .clickable-query-code:hover{color:#1d4ed8 !important;text-decoration:underline !important}
+  .excel-table tr:hover td{background:#f0f7ff}
+  .footer{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:18px;margin:18px 18px 18px;text-align:center}
+  .footer p{margin:0;color:var(--muted);font-size:12px}
+  .panel{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+  .panel.left-panel{height:calc(100vh - 236px)}
+  .panel.right-panel{flex:1;min-height:200px}
+  .panel.copy-panel{flex:1;min-height:200px}
+  .panel.button-panel{flex:0 0 auto;height:auto;min-height:auto;padding:12px 14px}
+  h3{margin:0 0 8px;font-size:16px;color:var(--brand)}
+  .preview{flex:1;overflow:auto;border:1px dashed #e5e7eb;border-radius:10px;padding:14px;background:#fff;min-height:0;overflow-y:auto;display:flex;flex-direction:column;height:100%}
   .preview img{max-width:100%;display:block;margin:10px 0;border-radius:8px}
-  .right{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:.6fr auto .45fr;gap:18px;height:calc(100vh - 36px)}
+  .right{display:flex;flex-direction:column;gap:8px;height:calc(100vh - 236px)}
+  .copy-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;flex:6}
+  .markdown-section{flex:4}
   textarea{flex:1;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;font-family:ui-monospace,Menlo,monospace;resize:none;min-height:0;line-height:1.5}
   .row{display:flex;gap:10px;align-items:center;margin-bottom:8px}
   .btn{border:none;border-radius:10px;padding:8px 14px;background:var(--brand);color:#fff;cursor:pointer}
@@ -24,76 +127,152 @@
   .muted{color:var(--muted);font-size:12px}
   .error{display:none;margin-bottom:10px;padding:8px 12px;border-radius:10px;background:#FEF2F2;border:1px solid #FCA5A5;color:var(--warn)}
   .tag{font-size:12px;color:#111;background:#eef2ff;border:1px solid #e0e7ff;border-radius:8px;padding:3px 8px}
-</style>
+    </style>
 </head>
 <body>
-<div class="container">
-  <div class="panel">
+    <div class="header">
+        <h1>Markdown 图片合并工具</h1>
+        <div class="header-right">
+            <div class="upload-section">
+                <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpload(this)">
+                <button class="upload-btn" onclick="document.getElementById('excelFile').click()">选择文件</button>
+                <div id="fileInfo" class="file-info">未选择文件</div>
+            </div>
+            
+            <div class="progress-section">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <div id="progressText" class="progress-text">等待处理</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="query-section">
+        <div class="query-display">
+            <span class="query-label">当前 query：</span>
+            <span id="currentQuery" class="query-text">未设置</span>
+        </div>
+        <div class="link-display">
+            <button class="copy-btn" onclick="copyLink()">复制</button>
+            <span class="query-label">当前链接：</span>
+            <span id="currentLink" class="query-text">未设置</span>
+        </div>
+        <div class="navigation-buttons">
+            <button class="nav-btn next-btn" onclick="nextQuery()">下一个</button>
+            <button class="nav-btn prev-btn" onclick="previousQuery()">上一个</button>
+        </div>
+    </div>
+
+    <div class="container">
+            <div class="panel left-panel">
     <h3>合并后的渲染</h3>
     <div id="errorBox" class="error"></div>
-    <div id="renderedPreview" class="preview"></div>
-  </div>
+    <div id="renderedPreview" class="preview" style="flex:1;min-height:400px;"></div>
+            </div>
 
   <div class="right">
-    <div class="panel">
+    <div class="copy-row">
+            <div class="panel copy-panel">
       <div class="row">
         <h3 style="flex:1">复制 1（文本一 / 基线）</h3>
         <button class="btn btn-outline" onclick="clearLeft()">清空</button>
-      </div>
+            </div>
       <textarea id="leftMarkdown" placeholder="粘贴【文本一】（最终输出将逐字保持一致，不改任何字）…"></textarea>
       <div class="muted" style="margin-top:6px">仅插入图片行；文字一字不改。图片始终插在对应句子的<strong>下一行</strong>。</div>
-    </div>
+            </div>
 
-    <div class="panel">
+    <div class="panel copy-panel">
       <div class="row">
         <h3 style="flex:1">复制 2（文本二 / 原文+图片）</h3>
         <button class="btn btn-outline" onclick="clearRight()">清空</button>
-      </div>
+                </div>
       <textarea id="rightMarkdown" placeholder="粘贴【文本二】：一段文字 → 一张/几张图 → 下一段文字…（无需 caption）"></textarea>
       <div class="muted" style="margin-top:6px">算法只按顺序与句尾匹配，不依赖关键词或 caption。</div>
+            </div>
     </div>
-
-    <div class="panel grid-full" style="align-items:flex-start">
-      <div class="row" style="flex-wrap:wrap;gap:12px">
-        <button class="btn" onclick="mergeNow()">合并</button>
+            
+    <div class="panel right-panel markdown-section">
+      <div class="row" style="align-items:center;margin-bottom:6px;gap:12px">
+        <h3 style="margin:0">合并后的 Markdown</h3>
         <button class="btn btn-ok" onclick="copyMerged()">复制合并结果</button>
         <label class="tag">模式：句尾锚点（固定）</label>
       </div>
-    </div>
-
-    <div class="panel grid-full">
-      <h3 style="margin-bottom:6px">合并后的 Markdown</h3>
       <textarea id="mergedMarkdown" placeholder="结果会出现在这里…"></textarea>
     </div>
-  </div>
-</div>
+        </div>
+    </div>
+    
+    <div class="excel-display-section" id="excelDisplaySection">
+        <div class="excel-header">
+            <h3>Excel 内容展示</h3>
+            <div class="excel-header-buttons">
+                <button class="download-btn" onclick="downloadExcel()" id="downloadBtn" style="display:none">下载Excel</button>
+                <button class="close-btn" onclick="closeExcelDisplay()">×</button>
+            </div>
+        </div>
+        <div class="excel-content" id="excelContent">
+            <div class="no-file-message">
+                <div class="no-file-icon">📄</div>
+                <p>未上传文档</p>
+                <span class="no-file-hint">请在上方选择Excel文件进行上传</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>© 2025 Pic Capture · 基于句尾锚点的智能Markdown合并工具</p>
+    </div>
 
-<script>
+    <script>
 /* ---------- Markdown 预览（简单渲染） ---------- */
 function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function renderMarkdown(md){
   if(!md) return '';
+  
+  // 处理代码块
   md = md.replace(/```([^`\n]*)\n([\s\S]*?)```/g,(m,lang,code)=>'<pre><code>'+escapeHtml(code)+'</code></pre>');
+  
+  // 处理图片
   md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img alt="$1" src="$2">');
+  
+  // 处理链接
   md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  
+  // 处理粗体和斜体
   md = md.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');
-  md = md.replace(/^######\s+(.*)$/gm,'<h6>$1</h6>').replace(/^#####\s+(.*)$/gm,'<h5>$1</h5>')
-         .replace(/^####\s+(.*)$/gm,'<h4>$1</h4>').replace(/^###\s+(.*)$/gm,'<h3>$1</h3>')
-         .replace(/^##\s+(.*)$/gm,'<h2>$1</h2>').replace(/^#\s+(.*)$/gm,'<h1>$1</h1>');
-  md = md.replace(/^\>\s?(.*)$/gm,'<blockquote>$1</blockquote>');
+  
+  // 处理标题 - 增强样式
+  md = md.replace(/^######\s+(.*)$/gm,'<h6 class="markdown-h6">$1</h6>')
+         .replace(/^#####\s+(.*)$/gm,'<h5 class="markdown-h5">$1</h5>')
+         .replace(/^####\s+(.*)$/gm,'<h4 class="markdown-h4">$1</h4>')
+         .replace(/^###\s+(.*)$/gm,'<h3 class="markdown-h3">$1</h3>')
+         .replace(/^##\s+(.*)$/gm,'<h2 class="markdown-h2">$1</h2>')
+         .replace(/^#\s+(.*)$/gm,'<h1 class="markdown-h1">$1</h1>');
+  
+  // 处理引用
+  md = md.replace(/^\>\s?(.*)$/gm,'<blockquote class="markdown-blockquote">$1</blockquote>');
+  
+  // 处理无序列表 - 增强样式
   md = md.replace(/^(?:\s*[-*+]\s+.+\n?)+/gm, block=>{
     const items = block.trim().split(/\n/).map(l=>l.replace(/^\s*[-*+]\s+/,'').trim());
-    return '<ul>' + items.map(it=>'<li>'+it+'</li>').join('') + '</ul>';
+    return '<ul class="markdown-ul">' + items.map(it=>'<li class="markdown-li">'+it+'</li>').join('') + '</ul>';
   });
+  
+  // 处理有序列表 - 增强样式
   md = md.replace(/^(?:\s*\d+\.\s+.+\n?)+/gm, block=>{
     const items = block.trim().split(/\n/).map(l=>l.replace(/^\s*\d+\.\s+/,'').trim());
-    return '<ol>' + items.map(it=>'<li>'+it+'</li>').join('') + '</ol>';
+    return '<ol class="markdown-ol">' + items.map(it=>'<li class="markdown-li">'+it+'</li>').join('') + '</ol>';
   });
-  md = md.replace(/`([^`]+)`/g,'<code>$1</code>');
+  
+  // 处理行内代码
+  md = md.replace(/`([^`]+)`/g,'<code class="markdown-code">$1</code>');
+  
+  // 处理段落
   return md.split(/\n/).map(l=>{
     if(/^<h\d|^<ul>|^<ol>|^<pre>|^<blockquote>|^<img/.test(l)) return l;
     if(!l.trim()) return '';
-    return '<p>'+l+'</p>';
+    return '<p class="markdown-p">'+l+'</p>';
   }).join('\n');
 }
 
@@ -213,6 +392,675 @@ function mergeBySentenceAnchor(text1, text2){
   return { merged, same };
 }
 
+/* ---------- 文件上传和进度条 ---------- */
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            const fileInfo = document.getElementById('fileInfo');
+            
+            if (file) {
+                // 显示文件信息
+                fileInfo.textContent = `已选择: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                fileInfo.style.color = 'var(--ok)';
+                
+                // 检查是否为Excel文件
+                if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                    // 处理Excel文件（不显示进度条）
+                    processExcelFile(file);
+                } else {
+                    alert('请选择Excel文件 (.xlsx 或 .xls)');
+                    fileInfo.textContent = '未选择文件';
+                    fileInfo.style.color = 'var(--muted)';
+                }
+            } else {
+                fileInfo.textContent = '未选择文件';
+                fileInfo.style.color = 'var(--muted)';
+            }
+        }
+
+function simulateProgress() {
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 100) progress = 100;
+        
+        progressFill.style.width = progress + '%';
+        
+        if (progress < 30) {
+            progressText.textContent = '正在复制题目...';
+        } else if (progress < 60) {
+            progressText.textContent = '正在处理内容...';
+        } else if (progress < 90) {
+            progressText.textContent = '正在合并数据...';
+        } else if (progress < 100) {
+            progressText.textContent = '即将完成...';
+        } else {
+            progressText.textContent = '处理完成!';
+            clearInterval(interval);
+        }
+    }, 200);
+}
+
+/* ---------- Query 显示和导航 ---------- */
+let currentQueryIndex = 0;
+let extractedData = []; // 存储从Excel提取的query和链接数据
+
+function isMarkdownFormat(text) {
+    if (!text || typeof text !== 'string') return false;
+    // 检查是否包含markdown格式的链接 [text](url)
+    return /\[.*?\]\(.*?\)/.test(text) || text.includes('![') || text.includes('](');
+}
+
+function isWebLink(text) {
+    if (!text || typeof text !== 'string') return false;
+    // 检查是否是网页链接格式
+    return /^https?:\/\/.+/.test(text.trim());
+}
+
+function extractDataFromExcel(excelData) {
+    extractedData = [];
+    
+    if (!excelData || excelData.length === 0) {
+        updateQueryDisplay();
+        return;
+    }
+    
+    console.log('开始提取Excel数据，总行数:', excelData.length);
+    
+    // 遍历所有行，查找第三列（索引为2）的数据
+    for (let i = 1; i < excelData.length; i++) { // 从第2行开始（跳过表头）
+        const row = excelData[i];
+        if (row && row.length > 2) {
+            const thirdColumn = row[2];
+            // 处理网页链接和Markdown格式
+            
+            if (thirdColumn && (isWebLink(thirdColumn) || isMarkdownFormat(thirdColumn))) {
+        // 第一列（索引为0）是query编码，第二列（索引为1）是query内容，第三列是链接
+        const queryCode = row[0] || '';
+        const query = row[1] || `查询 ${extractedData.length + 1}`;
+        const link = thirdColumn.trim();
+        
+        console.log('提取到数据:', { queryCode, query, link });
+        
+        extractedData.push({
+            queryCode: queryCode,
+            query: query,
+            link: link,
+            rowNumber: i,  // 保存Excel中的实际行号
+            originalMarkdown: link  // 保存原始的markdown内容
+        });
+            }
+        }
+    }
+    
+    console.log('最终提取的数据:', extractedData);
+    
+    // 找到第一个需要处理的query（第三列是网站链接的）
+    let firstUnprocessedIndex = -1;
+    for (let i = 0; i < extractedData.length; i++) {
+        const data = extractedData[i];
+        if (data.link && isWebLink(data.link)) {
+            firstUnprocessedIndex = i;
+            break;
+        }
+    }
+    
+    // 如果找到了需要处理的query，选择它；否则选择第一个
+    currentQueryIndex = firstUnprocessedIndex !== -1 ? firstUnprocessedIndex : 0;
+    console.log('选择的默认query索引:', currentQueryIndex);
+    updateQueryDisplay();
+}
+
+function updateQueryDisplay() {
+    console.log('updateQueryDisplay called');
+    const queryText = document.getElementById('currentQuery');
+    const linkText = document.getElementById('currentLink');
+    console.log('queryText element:', queryText);
+    console.log('linkText element:', linkText);
+    
+    if (extractedData.length === 0) {
+        console.log('No extracted data, clearing display');
+        if (queryText) queryText.textContent = '';
+        if (linkText) linkText.textContent = '';
+    } else if (currentQueryIndex >= 0 && currentQueryIndex < extractedData.length) {
+        const queryCode = extractedData[currentQueryIndex].queryCode;
+        const query = extractedData[currentQueryIndex].query;
+        console.log('Setting query text to:', `${queryCode} ${query}`);
+    if (queryText) {
+        console.log('Before update - queryText.textContent:', queryText.textContent);
+        queryText.textContent = `${queryCode} ${query}`;
+        console.log('After update - queryText.textContent:', queryText.textContent);
+        console.log('Query text updated successfully');
+    } else {
+        console.log('ERROR: queryText element not found!');
+    }
+        
+        // 显示更新后的内容，如果是Markdown格式则显示预览
+        const linkContent = extractedData[currentQueryIndex].link;
+        if (isMarkdownFormat(linkContent)) {
+            // 如果是Markdown格式，显示为"已更新为Markdown内容"
+            linkText.textContent = '已更新为Markdown内容';
+            linkText.style.color = 'var(--ok)';
+            linkText.style.fontStyle = 'italic';
+        } else if (isWebLink(linkContent)) {
+            // 如果是网页链接，正常显示
+            linkText.textContent = linkContent;
+            linkText.style.color = 'var(--txt)';
+            linkText.style.fontStyle = 'normal';
+        } else {
+            // 其他情况
+            linkText.textContent = linkContent;
+            linkText.style.color = 'var(--txt)';
+            linkText.style.fontStyle = 'normal';
+        }
+    } else {
+        queryText.textContent = '未设置';
+        linkText.textContent = '未设置';
+    }
+}
+
+function copyQuery() {
+    const queryText = document.getElementById('currentQuery').textContent;
+    if (queryText && queryText !== '未设置') {
+        navigator.clipboard.writeText(queryText).then(() => {
+            const copyBtn = document.querySelector('.query-display .copy-btn');
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = '已复制';
+            copyBtn.style.background = 'var(--ok)';
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+                copyBtn.style.background = 'var(--brand)';
+            }, 1000);
+        }).catch(err => {
+            console.error('复制失败:', err);
+        });
+    }
+}
+
+function copyLink() {
+    if (extractedData.length === 0 || currentQueryIndex < 0 || currentQueryIndex >= extractedData.length) {
+        showMessage('没有可复制的内容', 'warn');
+        return;
+    }
+    
+    const linkContent = extractedData[currentQueryIndex].link;
+    if (linkContent) {
+        navigator.clipboard.writeText(linkContent).then(() => {
+            const copyBtn = document.querySelector('.link-display .copy-btn');
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = '已复制';
+            copyBtn.style.background = 'var(--ok)';
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+                copyBtn.style.background = 'var(--brand)';
+            }, 1000);
+        }).catch(err => {
+            console.error('复制失败:', err);
+        });
+    } else {
+        showMessage('没有可复制的内容', 'warn');
+    }
+}
+
+function previousQuery() {
+    if (extractedData.length === 0) {
+        showMessage('请先上传Excel文件', 'warn');
+        return;
+    }
+    
+    if (currentQueryIndex > 0) {
+        currentQueryIndex--;
+        updateQueryDisplay();
+        // 自动清空复制一、复制二输入框
+        clearInputPanels();
+        // 根据当前query的第三列内容决定合并markdown的显示
+        updateMergedMarkdownForCurrentQuery();
+    } else {
+        showMessage('这是第一个查询', 'info');
+    }
+}
+
+function nextQuery() {
+    if (extractedData.length === 0) {
+        showMessage('请先上传Excel文件', 'warn');
+        return;
+    }
+    
+    if (currentQueryIndex < extractedData.length - 1) {
+        currentQueryIndex++;
+        updateQueryDisplay();
+        // 自动清空复制一、复制二输入框
+        clearInputPanels();
+        // 根据当前query的第三列内容决定合并markdown的显示
+        updateMergedMarkdownForCurrentQuery();
+    } else {
+        showMessage('这是最后一个查询', 'info');
+    }
+}
+
+// 确保函数在全局作用域中可用
+window.switchToQuery = function(dataIndex) {
+    console.log('switchToQuery called with dataIndex:', dataIndex);
+    console.log('extractedData length:', extractedData.length);
+    console.log('extractedData:', extractedData);
+    
+    if (dataIndex < 0 || dataIndex >= extractedData.length) {
+        console.log('Invalid dataIndex:', dataIndex);
+        showMessage('无效的query索引', 'warn');
+        return;
+    }
+    
+    // 更新当前query索引
+    currentQueryIndex = dataIndex;
+    console.log('Updated currentQueryIndex to:', currentQueryIndex);
+    
+    // 更新query显示
+    console.log('Calling updateQueryDisplay...');
+    updateQueryDisplay();
+    console.log('updateQueryDisplay completed');
+    
+    // 清空复制一和复制二
+    console.log('Clearing left and right markdown...');
+    const leftMarkdown = document.getElementById('leftMarkdown');
+    const rightMarkdown = document.getElementById('rightMarkdown');
+    console.log('leftMarkdown element:', leftMarkdown);
+    console.log('rightMarkdown element:', rightMarkdown);
+    
+    // 自动清空复制一、复制二输入框
+    clearInputPanels();
+    console.log('Left and right markdown cleared');
+    
+    // 根据当前query的第三列内容更新合并markdown显示
+    updateMergedMarkdownForCurrentQuery();
+    
+    showMessage(`已切换到query: ${currentData.queryCode} ${currentData.query}`, 'success');
+};
+
+// 自动清空复制一、复制二输入框的函数
+function clearInputPanels() {
+    const leftMarkdown = document.getElementById('leftMarkdown');
+    const rightMarkdown = document.getElementById('rightMarkdown');
+    
+    if (leftMarkdown) {
+        leftMarkdown.removeEventListener('input', mergeNow);
+        leftMarkdown.value = '';
+        leftMarkdown.addEventListener('input', mergeNow);
+    }
+    if (rightMarkdown) {
+        rightMarkdown.removeEventListener('input', mergeNow);
+        rightMarkdown.value = '';
+        rightMarkdown.addEventListener('input', mergeNow);
+    }
+}
+
+// 根据当前query的第三列内容更新合并markdown显示
+function updateMergedMarkdownForCurrentQuery() {
+    if (currentQueryIndex < 0 || currentQueryIndex >= extractedData.length) {
+        return;
+    }
+    
+    const currentData = extractedData[currentQueryIndex];
+    const mergedMarkdown = document.getElementById('mergedMarkdown');
+    const renderedPreview = document.getElementById('renderedPreview');
+    
+    if (!mergedMarkdown || !renderedPreview) {
+        return;
+    }
+    
+    // 检查第三列是否是网站链接
+    if (isWebLink(currentData.link)) {
+        // 如果是网站链接，清空合并markdown
+        mergedMarkdown.value = '';
+        renderedPreview.innerHTML = '';
+    } else {
+        // 如果已经是markdown格式，显示现有内容
+        mergedMarkdown.value = currentData.link;
+        renderedPreview.innerHTML = renderMarkdown(currentData.link);
+    }
+}
+
+// 更新进度条，基于第三列中markdown格式的数量
+function updateProgressBar() {
+    if (!window.excelData || window.excelData.length === 0) {
+        return;
+    }
+    
+    let totalRows = 0;
+    let markdownRows = 0;
+    
+    // 遍历所有行，统计第三列数据
+    for (let i = 1; i < window.excelData.length; i++) { // 从第2行开始（跳过表头）
+        const row = window.excelData[i];
+        if (row && row.length > 2) {
+            const thirdColumn = row[2];
+            if (thirdColumn && (isWebLink(thirdColumn) || isMarkdownFormat(thirdColumn))) {
+                totalRows++;
+                if (isMarkdownFormat(thirdColumn)) {
+                    markdownRows++;
+                }
+            }
+        }
+    }
+    
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    
+    if (totalRows > 0) {
+        const percentage = Math.round((markdownRows / totalRows) * 100);
+        progressFill.style.width = percentage + '%';
+        progressText.textContent = `${markdownRows}/${totalRows} (${percentage}%)`;
+    } else {
+        progressFill.style.width = '0%';
+        progressText.textContent = '等待处理';
+    }
+}
+
+function showMessage(message, type = 'info') {
+    // 创建临时提示消息
+    const messageDiv = document.createElement('div');
+    let backgroundColor = 'var(--brand)';
+    
+    if (type === 'warn') {
+        backgroundColor = 'var(--warn)';
+    } else if (type === 'success') {
+        backgroundColor = 'var(--ok)';
+    }
+    
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${backgroundColor};
+        color: white;
+        padding: 10px 15px;
+        border-radius: 6px;
+        font-size: 14px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    messageDiv.textContent = message;
+    
+    document.body.appendChild(messageDiv);
+    
+    // 3秒后自动移除
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.parentNode.removeChild(messageDiv);
+        }
+    }, 3000);
+}
+
+// 初始化
+updateQueryDisplay();
+
+// 初始化Excel展示区域
+document.addEventListener('DOMContentLoaded', function() {
+    const closeBtn = document.querySelector('.close-btn');
+    closeBtn.style.display = 'none'; // 初始隐藏关闭按钮
+});
+
+/* ---------- Excel 文件处理 ---------- */
+function processExcelFile(file) {
+    console.log('处理Excel文件:', file.name);
+    // 这里应该解析真实的Excel文件
+    // 目前显示文件信息，提示用户功能开发中
+    setTimeout(() => {
+        console.log('显示Excel文件信息');
+        displayExcelFileInfo(file);
+    }, 1000);
+}
+
+function displayExcelFileInfo(file) {
+    const excelDisplaySection = document.getElementById('excelDisplaySection');
+    const excelContent = document.getElementById('excelContent');
+    const closeBtn = document.querySelector('.close-btn');
+    
+    // 解析Excel文件并显示内容
+    parseExcelFile(file, excelContent, closeBtn, excelDisplaySection);
+}
+
+function parseExcelFile(file, excelContent, closeBtn, excelDisplaySection) {
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            // 获取第一个工作表
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // 转换为JSON格式
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            // 显示表格内容
+            displayExcelTable(jsonData, excelContent, closeBtn, excelDisplaySection);
+            
+        } catch (error) {
+            console.error('Excel解析错误:', error);
+            excelContent.innerHTML = `
+                <div class="error-message">
+                    <div class="error-icon">❌</div>
+                    <h4>文件解析失败</h4>
+                    <p>无法解析Excel文件，请确保文件格式正确</p>
+                </div>
+            `;
+            closeBtn.style.display = 'flex';
+        }
+    };
+    
+    reader.onerror = function() {
+        excelContent.innerHTML = `
+            <div class="error-message">
+                <div class="error-icon">❌</div>
+                <h4>文件读取失败</h4>
+                <p>无法读取文件，请重试</p>
+            </div>
+        `;
+        closeBtn.style.display = 'flex';
+    };
+    
+    reader.readAsArrayBuffer(file);
+}
+
+function displayExcelTable(data, excelContent, closeBtn, excelDisplaySection) {
+    if (!data || data.length === 0) {
+        excelContent.innerHTML = `
+            <div class="empty-message">
+                <div class="empty-icon">📋</div>
+                <h4>表格为空</h4>
+                <p>Excel文件中没有数据</p>
+            </div>
+        `;
+        closeBtn.style.display = 'flex';
+        return;
+    }
+    
+    // 生成表格HTML
+    let tableHTML = '<table class="excel-table">';
+    
+    // 处理每一行数据
+    data.forEach((row, rowIndex) => {
+        if (rowIndex === 0) {
+            // 第一行作为表头
+            tableHTML += '<thead><tr>';
+            row.forEach(cell => {
+                const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+                tableHTML += `<th>${cellValue}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+        } else {
+            // 数据行
+            tableHTML += '<tr>';
+            row.forEach((cell, cellIndex) => {
+                const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+                
+                // 第三列（索引为2）特殊处理：支持Markdown渲染
+                if (cellIndex === 2) {
+                    if (isMarkdownFormat(cellValue)) {
+                        // 如果是Markdown格式，进行渲染
+                        const renderedContent = marked.parse(cellValue);
+                        tableHTML += `<td class="markdown-cell">${renderedContent}</td>`;
+                    } else if (isWebLink(cellValue)) {
+                        // 如果是网页链接，渲染为可点击的链接
+                        tableHTML += `<td><a href="${cellValue}" target="_blank" class="web-link">${cellValue}</a></td>`;
+                    } else {
+                        // 普通文本
+                        tableHTML += `<td>${cellValue}</td>`;
+                    }
+                } else {
+                    // 其他列正常显示
+                    tableHTML += `<td>${cellValue}</td>`;
+                }
+            });
+            tableHTML += '</tr>';
+        }
+    });
+    
+    tableHTML += '</tbody></table>';
+    
+    excelContent.innerHTML = tableHTML;
+    closeBtn.style.display = 'flex';
+    
+    // 显示下载按钮
+    const downloadBtn = document.getElementById('downloadBtn');
+    downloadBtn.style.display = 'flex';
+    
+    // 存储Excel数据到全局变量
+    window.excelData = data;
+    
+    // 提取query和链接数据
+    extractDataFromExcel(data);
+    
+    // 刷新Excel显示
+    refreshExcelDisplay();
+    
+    // 更新进度条
+    updateProgressBar();
+    
+    // 不自动滚动到Excel展示区域
+    // excelDisplaySection.scrollIntoView({ behavior: 'smooth' });
+}
+
+function displayExcelContent(data) {
+    const excelDisplaySection = document.getElementById('excelDisplaySection');
+    const excelContent = document.getElementById('excelContent');
+    const closeBtn = document.querySelector('.close-btn');
+    
+    // 生成表格HTML
+    let tableHTML = '<table class="excel-table">';
+    
+    // 表头
+    tableHTML += '<thead><tr>';
+    data.headers.forEach(header => {
+        tableHTML += `<th>${header}</th>`;
+    });
+    tableHTML += '</tr></thead>';
+    
+    // 表格内容
+    tableHTML += '<tbody>';
+    data.rows.forEach((row, rowIndex) => {
+        tableHTML += '<tr>';
+        row.forEach((cell, cellIndex) => {
+            const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+            
+            // 第一列（索引为0）特殊处理：query编码可点击
+            if (cellIndex === 0) {
+                // 查找对应的extractedData索引，使用queryCode匹配
+                const dataIndex = extractedData.findIndex(item => item.queryCode === cellValue);
+                if (dataIndex !== -1) {
+                    tableHTML += `<td><span class="clickable-query-code" onclick="switchToQuery(${dataIndex});">${cellValue}</span></td>`;
+                } else {
+                    tableHTML += `<td>${cellValue}</td>`;
+                }
+            }
+            // 第三列（索引为2）特殊处理：支持Markdown渲染
+            else if (cellIndex === 2) {
+                if (isMarkdownFormat(cellValue)) {
+                    // 如果是Markdown格式，进行渲染
+                    const renderedContent = marked.parse(cellValue);
+                    tableHTML += `<td class="markdown-cell">${renderedContent}</td>`;
+                } else if (isWebLink(cellValue)) {
+                    // 如果是网页链接，渲染为可点击的链接
+                    tableHTML += `<td><a href="${cellValue}" target="_blank" class="web-link">${cellValue}</a></td>`;
+                } else {
+                    // 普通文本
+                    tableHTML += `<td>${cellValue}</td>`;
+                }
+            } else {
+                // 其他列正常显示
+                tableHTML += `<td>${cellValue}</td>`;
+            }
+        });
+        tableHTML += '</tr>';
+    });
+    tableHTML += '</tbody></table>';
+    
+    excelContent.innerHTML = tableHTML;
+    closeBtn.style.display = 'flex'; // 显示关闭按钮
+    
+    // 不自动滚动到Excel展示区域
+    // excelDisplaySection.scrollIntoView({ behavior: 'smooth' });
+}
+
+function closeExcelDisplay() {
+    const excelContent = document.getElementById('excelContent');
+    const closeBtn = document.querySelector('.close-btn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    
+    // 恢复为未上传状态
+    excelContent.innerHTML = `
+        <div class="no-file-message">
+            <div class="no-file-icon">📄</div>
+            <p>未上传文档</p>
+            <span class="no-file-hint">请在上方选择Excel文件进行上传</span>
+        </div>
+    `;
+    closeBtn.style.display = 'none'; // 隐藏关闭按钮
+    downloadBtn.style.display = 'none'; // 隐藏下载按钮
+    
+    // 清空提取的数据
+    extractedData = [];
+    currentQueryIndex = 0;
+    window.excelData = null;
+    updateQueryDisplay();
+}
+
+function downloadExcel() {
+    if (!window.excelData) {
+        showMessage('没有可下载的Excel数据', 'warn');
+        return;
+    }
+    
+    try {
+        // 创建工作簿
+        const wb = XLSX.utils.book_new();
+        
+        // 创建工作表
+        const ws = XLSX.utils.aoa_to_sheet(window.excelData);
+        
+        // 添加工作表到工作簿
+        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+        
+        // 生成文件名（包含时间戳）
+        const now = new Date();
+        const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+        const filename = `updated_excel_${timestamp}.xlsx`;
+        
+        // 下载文件
+        XLSX.writeFile(wb, filename);
+        
+        showMessage('Excel文件下载成功', 'success');
+    } catch (error) {
+        console.error('下载Excel失败:', error);
+        showMessage('下载Excel失败，请重试', 'warn');
+    }
+}
+
+
 /* ---------- 交互 ---------- */
 function showError(msg){ const b=document.getElementById('errorBox'); b.textContent=msg||''; b.style.display=msg?'block':'none'; }
 function clearLeft(){ document.getElementById('leftMarkdown').value=''; mergeNow(); }
@@ -220,12 +1068,173 @@ function clearRight(){ document.getElementById('rightMarkdown').value=''; mergeN
 
 function copyMerged(){
   const v=document.getElementById('mergedMarkdown').value||'';
-  if(navigator.clipboard?.writeText){
-    navigator.clipboard.writeText(v).then(()=>showError('已复制到剪贴板')).catch(()=>showError('复制失败：浏览器限制'));
-  }else{
-    const ta=document.getElementById('mergedMarkdown'); ta.select(); document.execCommand('copy'); showError('已尝试复制（旧接口）');
+  
+  if (!v) {
+    showMessage('没有可保存的合并结果', 'warn');
+    return;
   }
-  setTimeout(()=>showError(''),1400);
+  
+  if (extractedData.length === 0) {
+    showMessage('请先上传Excel文件', 'warn');
+    return;
+  }
+  
+  if (currentQueryIndex < 0 || currentQueryIndex >= extractedData.length) {
+    showMessage('当前没有选中的query', 'warn');
+    return;
+  }
+  
+  // 检查是否需要确认覆盖
+  const currentData = extractedData[currentQueryIndex];
+  const isCurrentlyWebLink = isWebLink(currentData.link);
+  const isCurrentlyMarkdown = !isCurrentlyWebLink && currentData.link && currentData.link.trim() !== '';
+  
+  if (isCurrentlyMarkdown) {
+    // 如果当前已经是markdown格式，需要确认覆盖
+    const confirmMessage = `当前query "${currentData.queryCode} ${currentData.query}" 已有markdown内容，是否用新的内容替换？`;
+    if (!confirm(confirmMessage)) {
+      showMessage('操作已取消', 'info');
+      return;
+    }
+  }
+  // 如果当前是网站链接，直接保存，不需要确认
+  
+  // 开始处理进度条
+  simulateProgress();
+  
+  // 延迟执行更新，让进度条有时间显示
+  setTimeout(() => {
+    // 更新当前query对应的第三列数据
+    updateAnswerInExcel(currentQueryIndex, v);
+  }, 1000);
+}
+
+function updateAnswerInExcel(queryIndex, markdownContent) {
+  if (!window.excelData) {
+    showMessage('Excel数据不可用', 'warn');
+    return;
+  }
+  
+  console.log('开始更新Excel数据，queryIndex:', queryIndex);
+  console.log('当前extractedData:', extractedData);
+  console.log('当前query的link:', extractedData[queryIndex]?.link);
+  
+  // 找到对应的行并更新第三列（索引为2）
+  let updated = false;
+  let foundRowIndex = -1;
+  
+  for (let i = 1; i < window.excelData.length; i++) { // 从第2行开始（跳过表头）
+    const row = window.excelData[i];
+    if (row && row.length > 2) {
+      const thirdColumn = row[2];
+      console.log(`检查第${i}行，第三列内容:`, thirdColumn);
+      
+      // 检查是否是当前query对应的链接
+      if (thirdColumn && thirdColumn.trim() === extractedData[queryIndex].link) {
+        console.log('找到匹配的行，准备更新');
+        // 更新第三列为合并后的markdown内容
+        row[2] = markdownContent;
+        // 同时更新extractedData中的link字段
+        extractedData[queryIndex].link = markdownContent;
+        updated = true;
+        foundRowIndex = i;
+        break;
+      }
+    }
+  }
+  
+  console.log('更新结果:', updated, '找到的行索引:', foundRowIndex);
+  
+  if (updated) {
+    // 更新显示
+    refreshExcelDisplay();
+    // 更新当前链接显示
+    updateQueryDisplay();
+    // 更新进度条
+    updateProgressBar();
+    showMessage('合并结果已保存到表格', 'success');
+  } else {
+    showMessage('未找到对应的行进行更新', 'warn');
+  }
+}
+
+function refreshExcelDisplay() {
+  if (!window.excelData) return;
+  
+  
+  const excelContent = document.getElementById('excelContent');
+  const closeBtn = document.querySelector('.close-btn');
+  
+  // 重新生成表格HTML
+  let tableHTML = '<table class="excel-table">';
+  
+  // 处理每一行数据
+  window.excelData.forEach((row, rowIndex) => {
+    if (rowIndex === 0) {
+      // 第一行作为表头
+      tableHTML += '<thead><tr>';
+      row.forEach(cell => {
+        const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+        tableHTML += `<th>${cellValue}</th>`;
+      });
+      tableHTML += '</tr></thead><tbody>';
+    } else {
+      // 数据行
+      tableHTML += '<tr>';
+      row.forEach((cell, cellIndex) => {
+        const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+        
+        
+        // 第一列（索引为0）特殊处理：query编码可点击
+        if (cellIndex === 0) {
+          // 查找对应的extractedData索引，使用queryCode匹配
+          console.log('Looking for queryCode:', cellValue);
+          console.log('Available queryCodes:', extractedData.map(item => item.queryCode));
+          const dataIndex = extractedData.findIndex(item => item.queryCode === cellValue);
+          console.log('Found dataIndex:', dataIndex);
+          
+          if (dataIndex !== -1) {
+            // 使用立即执行函数来保存dataIndex的值
+            tableHTML += `<td><span class="clickable-query-code" onclick="(function(idx){switchToQuery(idx);})(${dataIndex});">${cellValue}</span></td>`;
+          } else {
+            // 如果匹配失败，仍然创建可点击元素（使用索引0作为默认）
+            console.log('No match found for:', cellValue, 'using index 0 as default');
+            tableHTML += `<td><span class="clickable-query-code" onclick="switchToQuery(0);">${cellValue}</span></td>`;
+          }
+        }
+        // 第三列（索引为2）特殊处理：支持Markdown渲染
+        else if (cellIndex === 2) {
+          
+          if (isMarkdownFormat(cellValue)) {
+            // 如果是Markdown格式，进行渲染
+            const renderedContent = marked.parse(cellValue);
+            tableHTML += `<td class="markdown-cell">${renderedContent}</td>`;
+          } else if (isWebLink(cellValue)) {
+            // 如果是网页链接，渲染为可点击的链接
+            tableHTML += `<td><a href="${cellValue}" target="_blank" class="web-link">${cellValue}</a></td>`;
+          } else {
+            // 普通文本
+            tableHTML += `<td>${cellValue}</td>`;
+          }
+        } else {
+          // 其他列正常显示
+          tableHTML += `<td>${cellValue}</td>`;
+        }
+      });
+      tableHTML += '</tr>';
+    }
+  });
+  
+  tableHTML += '</tbody></table>';
+  
+  excelContent.innerHTML = tableHTML;
+  closeBtn.style.display = 'flex';
+  
+  // 显示下载按钮
+  const downloadBtn = document.getElementById('downloadBtn');
+  downloadBtn.style.display = 'flex';
+  
+  console.log('Excel显示刷新完成');
 }
 
 function mergeNow(){
@@ -269,6 +1278,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     '4) 若文本二开头就有图，也会挂到文本一第一处非空行之后；',
     '5) 自带校验：去图后必须和文本一完全一致。'
   ].join('\n');
+  console.log('Setting initial tip content');
   document.getElementById('renderedPreview').innerHTML = renderMarkdown(tip);
   document.getElementById('leftMarkdown').addEventListener('input', mergeNow);
   document.getElementById('rightMarkdown').addEventListener('input', mergeNow);
@@ -276,6 +1286,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('renderedPreview').innerHTML = renderMarkdown(document.getElementById('mergedMarkdown').value||'');
   });
 });
-</script>
+    </script>
 </body>
 </html>
