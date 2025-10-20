@@ -474,6 +474,14 @@ function isHybridFormat(text) {
     return isMarkdownFormat(rest) || /[\u4e00-\u9fa5A-Za-z0-9!\-*#`_\[\(]/.test(rest);
 }
 
+// 提取混合格式中的markdown正文（去掉首行链接）
+function getHybridMarkdown(text) {
+    if (!text || typeof text !== 'string') return '';
+    const parts = text.split(/\r?\n/);
+    if (parts.length <= 1) return '';
+    return parts.slice(1).join('\n').trim();
+}
+
 function extractDataFromExcel(excelData) {
     extractedData = [];
     
@@ -722,13 +730,27 @@ function updateMergedMarkdownForCurrentQuery() {
         return;
     }
     
-    // 检查第三列是否是网站链接或混合格式
-    if (isWebLink(currentData.link) || isHybridFormat(currentData.link)) {
-        // 如果是网站链接，清空合并markdown
+    // 链接/混合：按照规则填充复制区并清空合并
+    if (isHybridFormat(currentData.link)) {
+        const left = document.getElementById('leftMarkdown');
+        const right = document.getElementById('rightMarkdown');
+        if (left) left.value = getHybridMarkdown(currentData.link);
+        if (right) right.value = '';
+        mergedMarkdown.value = '';
+        renderedPreview.innerHTML = '';
+    } else if (isWebLink(currentData.link)) {
+        const left = document.getElementById('leftMarkdown');
+        const right = document.getElementById('rightMarkdown');
+        if (left) left.value = '';
+        if (right) right.value = '';
         mergedMarkdown.value = '';
         renderedPreview.innerHTML = '';
     } else {
-        // 如果已经是markdown格式，显示现有内容
+        // 纯Markdown：显示现有内容
+        const left = document.getElementById('leftMarkdown');
+        const right = document.getElementById('rightMarkdown');
+        if (left) left.value = '';
+        if (right) right.value = '';
         mergedMarkdown.value = currentData.link;
         renderedPreview.innerHTML = renderMarkdown(currentData.link);
     }
