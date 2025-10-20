@@ -233,8 +233,11 @@ function renderMarkdown(md){
   // 处理代码块
   md = md.replace(/```([^`\n]*)\n([\s\S]*?)```/g,(m,lang,code)=>'<pre><code>'+escapeHtml(code)+'</code></pre>');
   
-  // 处理图片
-  md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img alt="$1" src="$2">');
+  // 处理图片 - 增强支持更多格式
+  md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(match, alt, src) {
+    console.log('Processing image:', {match, alt, src});
+    return `<img alt="${alt}" src="${src}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">`;
+  });
   
   // 处理链接
   md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
@@ -459,6 +462,18 @@ function isWebLink(text) {
     return /^https?:\/\/.+/.test(text.trim());
 }
 
+// 新增：检测“混合格式”（首行是链接，后续含有Markdown内容）
+function isHybridFormat(text) {
+    if (!text || typeof text !== 'string') return false;
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return false;
+    const firstIsLink = /^https?:\/\/.+/.test(lines[0]);
+    if (!firstIsLink) return false;
+    // 后续任意一行包含markdown结构或非链接的正文
+    const rest = lines.slice(1).join('\n');
+    return isMarkdownFormat(rest) || /[\u4e00-\u9fa5A-Za-z0-9!\-*#`_\[\(]/.test(rest);
+}
+
 function extractDataFromExcel(excelData) {
     extractedData = [];
     
@@ -497,11 +512,11 @@ function extractDataFromExcel(excelData) {
     
     console.log('最终提取的数据:', extractedData);
     
-    // 找到第一个需要处理的query（第三列是网站链接的）
+    // 找到第一个需要处理的query（第三列是网站链接或混合格式）
     let firstUnprocessedIndex = -1;
     for (let i = 0; i < extractedData.length; i++) {
         const data = extractedData[i];
-        if (data.link && isWebLink(data.link)) {
+        if (data.link && (isWebLink(data.link) || isHybridFormat(data.link))) {
             firstUnprocessedIndex = i;
             break;
         }
@@ -537,20 +552,18 @@ function updateQueryDisplay() {
         console.log('ERROR: queryText element not found!');
     }
         
-        // 显示更新后的内容，如果是Markdown格式则显示预览
-        const linkContent = extractedData[currentQueryIndex].link;
-        if (isMarkdownFormat(linkContent)) {
-            // 如果是Markdown格式，显示为"已更新为Markdown内容"
-            linkText.textContent = '已更新为Markdown内容';
-            linkText.style.color = 'var(--ok)';
-            linkText.style.fontStyle = 'italic';
-        } else if (isWebLink(linkContent)) {
-            // 如果是网页链接，正常显示
-            linkText.textContent = linkContent;
+        // 显示更新后的内容：混合/链接显示首行链接；纯Markdown不显示
+        const linkContent = extractedData[currentQueryIndex].link || '';
+        if (isWebLink(linkContent) || isHybridFormat(linkContent)) {
+            const firstLine = (linkContent.split(/\r?\n/)[0] || '').trim();
+            linkText.textContent = firstLine;
+            linkText.style.color = 'var(--txt)';
+            linkText.style.fontStyle = 'normal';
+        } else if (isMarkdownFormat(linkContent)) {
+            linkText.textContent = '';
             linkText.style.color = 'var(--txt)';
             linkText.style.fontStyle = 'normal';
         } else {
-            // 其他情况
             linkText.textContent = linkContent;
             linkText.style.color = 'var(--txt)';
             linkText.style.fontStyle = 'normal';
@@ -709,8 +722,8 @@ function updateMergedMarkdownForCurrentQuery() {
         return;
     }
     
-    // 检查第三列是否是网站链接
-    if (isWebLink(currentData.link)) {
+    // 检查第三列是否是网站链接或混合格式
+    if (isWebLink(currentData.link) || isHybridFormat(currentData.link)) {
         // 如果是网站链接，清空合并markdown
         mergedMarkdown.value = '';
         renderedPreview.innerHTML = '';
@@ -735,9 +748,10 @@ function updateProgressBar() {
         const row = window.excelData[i];
         if (row && row.length > 2) {
             const thirdColumn = row[2];
-            if (thirdColumn && (isWebLink(thirdColumn) || isMarkdownFormat(thirdColumn))) {
+            if (thirdColumn && (isWebLink(thirdColumn) || isMarkdownFormat(thirdColumn) || isHybridFormat(thirdColumn))) {
                 totalRows++;
-                if (isMarkdownFormat(thirdColumn)) {
+                // 仅纯Markdown计为已完成
+                if (isMarkdownFormat(thirdColumn) && !isHybridFormat(thirdColumn) && !isWebLink(thirdColumn)) {
                     markdownRows++;
                 }
             }
@@ -1087,7 +1101,8 @@ function copyMerged(){
   // 检查是否需要确认覆盖
   const currentData = extractedData[currentQueryIndex];
   const isCurrentlyWebLink = isWebLink(currentData.link);
-  const isCurrentlyMarkdown = !isCurrentlyWebLink && currentData.link && currentData.link.trim() !== '';
+  const isCurrentlyHybrid = isHybridFormat(currentData.link);
+  const isCurrentlyMarkdown = !isCurrentlyWebLink && !isCurrentlyHybrid && currentData.link && currentData.link.trim() !== '';
   
   if (isCurrentlyMarkdown) {
     // 如果当前已经是markdown格式，需要确认覆盖
@@ -1097,7 +1112,7 @@ function copyMerged(){
       return;
     }
   }
-  // 如果当前是网站链接，直接保存，不需要确认
+  // 如果当前是网站链接或混合，直接保存，不需要确认
   
   // 开始处理进度条
   simulateProgress();
