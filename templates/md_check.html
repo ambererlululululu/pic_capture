@@ -45,7 +45,7 @@
   .progress-bar{width:180px;height:8px;background:#e9ecef;border-radius:4px;overflow:hidden}
   .progress-fill{height:100%;background:linear-gradient(90deg,var(--brand),var(--ok));width:0%;transition:width 0.3s ease;border-radius:4px}
   .progress-text{font-size:12px;color:var(--muted);min-width:70px;text-align:right}
-  .container{display:grid;grid-template-columns:1fr 2fr;gap:8px;padding:18px;flex:1}
+  .container{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:18px;flex:1}
   .excel-display-section{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:18px;margin:0 18px;display:flex;flex-direction:column}
   .excel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;padding-bottom:10px;border-bottom:1px solid #e9ecef}
   .excel-header h3{margin:0;font-size:18px;color:var(--brand)}
@@ -129,7 +129,7 @@
   .footer p{margin:0;color:var(--muted);font-size:12px}
   .panel{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;min-height:0;overflow-y:auto}
   .panel.left-panel{height:calc(100vh - 236px)}
-  .panel.right-panel{flex:1;min-height:200px}
+  .panel.right-panel{height:calc(100vh - 236px);display:flex;flex-direction:column;flex:1;min-height:200px}
   .panel.copy-panel{flex:1;min-height:200px}
   .panel.button-panel{flex:0 0 auto;height:auto;min-height:auto;padding:12px 14px}
   h3{margin:0 0 8px;font-size:16px;color:var(--brand)}
@@ -149,16 +149,6 @@
   .error{display:none;margin-bottom:10px;padding:8px 12px;border-radius:10px;background:#FEF2F2;border:1px solid #FCA5A5;color:var(--warn)}
   .tag{font-size:12px;color:#111;background:#eef2ff;border:1px solid #e0e7ff;border-radius:8px;padding:3px 8px}
   
-  /* MD检查特有样式 */
-  .check-result{background:#f8f9fa;border:1px solid #e9ecef;border-radius:8px;padding:15px;margin:10px 0}
-  .check-item{display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px;border-radius:6px;background:#fff}
-  .check-item.pass{background:#d1f2eb;border-left:4px solid var(--ok)}
-  .check-item.fail{background:#ffeaa7;border-left:4px solid var(--warn)}
-  .check-icon{font-size:18px}
-  .check-text{flex:1}
-  .check-status{font-weight:600}
-  .check-status.pass{color:var(--ok)}
-  .check-status.fail{color:var(--warn)}
     </style>
 </head>
 <body>
@@ -192,65 +182,22 @@
     </div>
 
     <div class="container">
-            <div class="panel left-panel">
-    <h3>答案 MD 渲染</h3>
-    <div id="errorBox" class="error"></div>
-    <div id="renderedPreview" class="preview" style="flex:1;min-height:400px;"></div>
+        <div class="panel left-panel">
+            <h3>答案 MD 渲染</h3>
+            <div id="errorBox" class="error"></div>
+            <div id="renderedPreview" class="preview" style="flex:1;min-height:400px;"></div>
+        </div>
+
+        <div class="panel right-panel">
+            <div class="row">
+                <h3 style="flex:1">MD内容输入</h3>
+                <button class="btn btn-outline" onclick="clearLeft()">清空</button>
             </div>
-
-  <div class="right">
-    <div class="copy-row">
-            <div class="panel copy-panel">
-      <div class="row">
-        <h3 style="flex:1">MD内容输入</h3>
-        <button class="btn btn-outline" onclick="clearLeft()">清空</button>
-            </div>
-      <textarea id="leftMarkdown" placeholder="从表格自动获取当前query的answer…"></textarea>
-      <div class="muted" style="margin-top:6px">自动从表格获取当前query的answer内容。</div>
-            </div>
-
-    <div class="panel copy-panel">
-      <div class="row">
-        <h3 style="flex:1">检查规则</h3>
-        <button class="btn btn-outline" onclick="clearRight()">重置</button>
-                </div>
-      <textarea id="rightMarkdown" placeholder="默认检查规则…"># MD检查规则
-
-## 1. 格式检查
-- 查看是否有markdown格式露出（如**、*、`、#等符号直接显示）
-- 检查表格格式是否正确渲染
-- 验证列表格式是否规范
-
-## 2. 内容匹配检查
-- 当前答案和query匹配错误（正文没有query的关键词）
-- 检查答案是否回答了query的核心问题
-- 验证答案的完整性和准确性
-
-## 3. 结构完整性检查
-- 检查答案的逻辑结构是否清晰
-- 验证关键信息点是否完整
-- 确认答案格式是否符合要求
-
-## 4. 质量检查
-- 检查答案的专业性和准确性
-- 验证内容的可读性和易懂性
-- 确认答案是否满足用户需求</textarea>
-      <div class="muted" style="margin-top:6px">默认的Markdown检查规则和标准。</div>
-      <div style="margin-top:10px;">
-        <button class="btn btn-primary" onclick="performCheck()">开始检查</button>
-      </div>
-            </div>
+            <textarea id="leftMarkdown" placeholder="从表格自动获取当前query的answer…"></textarea>
+            <div class="muted" style="margin-top:6px">自动从表格获取当前query的answer内容。</div>
+        </div>
     </div>
     
-    <!-- 检查结果显示区域 -->
-    <div class="panel copy-panel" id="checkResultPanel" style="display:none;">
-      <div class="row">
-        <h3 style="flex:1">检查结果</h3>
-        <button class="btn btn-outline" onclick="copyCheckResult()">复制结果</button>
-      </div>
-      <div id="checkResultDisplay"></div>
-      <div class="muted" style="margin-top:6px">MD检查结果和问题详情。</div>
-    </div>
             
         </div>
     </div>
@@ -577,7 +524,7 @@ function previousQuery() {
 }
 
 
-/* ---------- MD检查功能 ---------- */
+/* ---------- 已删除MD检查功能 ---------- */
 function checkMarkdown(mdContent) {
     const checks = [];
     
@@ -767,7 +714,6 @@ function sanitize(s){return (s||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');}
 /* ---------- 交互 ---------- */
 function showError(msg){ const b=document.getElementById('errorBox'); b.textContent=msg||''; b.style.display=msg?'block':'none'; }
 function clearLeft(){ document.getElementById('leftMarkdown').value=''; mergeNow(); }
-function clearRight(){ document.getElementById('rightMarkdown').value=''; mergeNow(); }
 
 function performCheck() {
     const mdContent = document.getElementById('leftMarkdown').value;
@@ -841,7 +787,6 @@ function showMessage(message, type) {
 function mergeNow(){
   try{
     const left  = sanitize(document.getElementById('leftMarkdown').value||'');
-    const right = sanitize(document.getElementById('rightMarkdown').value||'');
 
     console.log('mergeNow called with left:', left.substring(0, 100) + '...');
 
@@ -1154,7 +1099,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   console.log('Setting initial tip content');
   document.getElementById('renderedPreview').innerHTML = '<div class="muted" style="text-align: center; padding: 40px 20px;">等待上传Excel文件并选择检查项...</div>';
   document.getElementById('leftMarkdown').addEventListener('input', mergeNow);
-  document.getElementById('rightMarkdown').addEventListener('input', mergeNow);
   
   // 初始化显示
   updateQueryDisplay();
