@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MD检查</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- 备用：CDN 标记库，如果不可用则降级到本地 renderMarkdown -->
+<script>
+  (function(){
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js';
+    s.onload = function(){ console.log('marked loaded'); };
+    s.onerror = function(){ console.warn('marked CDN load failed, using local renderer'); };
+    document.head.appendChild(s);
+  })();
+</script>
+    <style>
+  :root{--bg:#f6f7fb;--card:#fff;--txt:#111;--muted:#6b7280;--brand:#2563eb;--ok:#10b981;--warn:#b91c1c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;min-height:100vh;color:var(--txt);display:flex;flex-direction:column}
+  .header{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:18px;margin:18px 18px 0;display:flex;justify-content:space-between;align-items:center}
+  .header h1{margin:0;font-size:24px;color:var(--brand)}
+  .header p{margin:8px 0 0;color:var(--muted);font-size:14px}
+  .header-right{display:flex;align-items:center;gap:20px}
+  .query-section{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:15px 18px;margin:0 18px;display:flex;flex-direction:column;gap:12px}
+  .query-display{display:flex;align-items:center;gap:10px}
+  .link-display{display:flex;align-items:center;gap:10px}
+  .query-label{font-size:16px;color:var(--muted);font-weight:600}
+  .query-text{font-size:16px;color:var(--txt);background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;padding:8px 12px;flex:1;min-width:200px;font-weight:500}
+  .copy-btn{background:var(--brand);color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;transition:all 0.2s ease}
+  .copy-btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+  .navigation-buttons{display:flex;gap:10px;justify-content:center}
+  .nav-btn{background:#f8f9fa;color:var(--txt);border:1px solid #e9ecef;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:14px;transition:all 0.2s ease;flex:1;min-width:80px}
+  .nav-btn:hover{background:#e9ecef;transform:translateY(-1px)}
+  .prev-btn{border-color:var(--brand);color:var(--brand)}
+  .prev-btn:hover{background:var(--brand);color:#fff}
+  .next-btn{border-color:var(--ok);color:var(--ok)}
+  .next-btn:hover{background:var(--ok);color:#fff}
+  .upload-section{display:flex;align-items:center;gap:15px}
+  .upload-btn{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;font-size:14px;transition:all 0.2s ease}
+  .upload-btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+  .file-info{background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;padding:8px 12px;font-size:12px;color:var(--muted);width:200px;min-height:20px;transition:all 0.2s ease}
+  .progress-section{display:flex;align-items:center;gap:15px;justify-content:flex-end}
+  .progress-bar{width:180px;height:8px;background:#e9ecef;border-radius:4px;overflow:hidden}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--brand),var(--ok));width:0%;transition:width 0.3s ease;border-radius:4px}
+  .progress-text{font-size:12px;color:var(--muted);min-width:70px;text-align:right}
+  .container{display:grid;grid-template-columns:1fr 2fr;gap:8px;padding:18px;flex:1}
+  .excel-display-section{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:18px;margin:0 18px;display:flex;flex-direction:column}
+  .excel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;padding-bottom:10px;border-bottom:1px solid #e9ecef}
+  .excel-header h3{margin:0;font-size:18px;color:var(--brand)}
+  .excel-header-buttons{display:flex;align-items:center;gap:10px}
+  .download-btn{background:var(--ok);color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;transition:all 0.2s ease}
+  .download-btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+  .close-btn{background:none;border:none;font-size:24px;color:var(--muted);cursor:pointer;padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all 0.2s ease}
+  .close-btn:hover{background:#f8f9fa;color:var(--warn)}
+  .excel-content{flex:1;overflow:auto;max-height:400px}
+  .no-file-message{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center;color:var(--muted)}
+  .no-file-icon{font-size:48px;margin-bottom:15px;opacity:0.6}
+  .no-file-message p{margin:0 0 8px;font-size:18px;color:var(--txt)}
+  .no-file-hint{font-size:14px;color:var(--muted)}
+  .file-info-display{display:flex;flex-direction:column;align-items:center;padding:30px 20px;text-align:center}
+  .file-info-icon{font-size:48px;margin-bottom:15px;opacity:0.8}
+  .file-info-display h4{margin:0 0 20px;font-size:20px;color:var(--brand)}
+  .file-details{background:#f8f9fa;border-radius:8px;padding:20px;margin-bottom:20px;text-align:left;min-width:300px}
+  .file-details p{margin:0 0 10px;font-size:14px;color:var(--txt)}
+  .file-details p:last-child{margin-bottom:0}
+  .processing-note{background:#e3f2fd;border:1px solid #bbdefb;border-radius:8px;padding:15px;color:var(--brand)}
+  .processing-note p{margin:0 0 5px;font-size:16px;font-weight:500}
+  .processing-note span{font-size:14px;opacity:0.8}
+  .error-message{display:flex;flex-direction:column;align-items:center;padding:30px 20px;text-align:center;color:var(--warn)}
+  .error-icon{font-size:48px;margin-bottom:15px}
+  .error-message h4{margin:0 0 10px;font-size:18px;color:var(--warn)}
+  .error-message p{margin:0;font-size:14px;color:var(--muted)}
+  .empty-message{display:flex;flex-direction:column;align-items:center;padding:30px 20px;text-align:center;color:var(--muted)}
+  .empty-icon{font-size:48px;margin-bottom:15px;opacity:0.6}
+  .empty-message h4{margin:0 0 10px;font-size:18px;color:var(--txt)}
+  .empty-message p{margin:0;font-size:14px;color:var(--muted)}
+  .excel-table{width:100%;border-collapse:collapse;font-size:14px}
+  .excel-table th,.excel-table td{border:1px solid #e9ecef;padding:8px 12px;text-align:left;vertical-align:top}
+  .excel-table th{background:#f8f9fa;font-weight:600;color:var(--txt)}
+  .excel-table td{background:#fff}
+  .excel-table tr:nth-child(even) td{background:#fafafa}
+  .markdown-cell{max-width:400px;word-wrap:break-word}
+  .markdown-cell p{margin:0 0 2px;line-height:1.2}
+  .markdown-cell p:last-child{margin-bottom:0}
+  .markdown-cell img{max-width:100%;height:auto;border-radius:4px;margin:4px 0}
+  .markdown-cell a{color:var(--brand);text-decoration:none}
+  .markdown-cell a:hover{text-decoration:underline}
+  
+  /* 增强的Markdown渲染样式 */
+  .markdown-h1{font-size:28px;font-weight:700;color:var(--txt);margin:24px 0 16px;line-height:1.3;border-bottom:2px solid var(--brand);padding-bottom:8px}
+  .markdown-h2{font-size:24px;font-weight:600;color:var(--txt);margin:20px 0 12px;line-height:1.4}
+  .markdown-h3{font-size:20px;font-weight:600;color:var(--brand);margin:16px 0 10px;line-height:1.4}
+  .markdown-h4{font-size:18px;font-weight:600;color:var(--txt);margin:14px 0 8px;line-height:1.4}
+  .markdown-h5{font-size:16px;font-weight:600;color:var(--txt);margin:12px 0 6px;line-height:1.4}
+  .markdown-h6{font-size:14px;font-weight:600;color:var(--muted);margin:10px 0 4px;line-height:1.4}
+  .markdown-p{margin:2px 0;line-height:1.2;color:var(--txt)}
+  .markdown-ul,.markdown-ol{margin:8px 0;padding-left:32px}
+  .markdown-li{margin:1px 0;line-height:1.1;color:var(--txt);padding-left:16px}
+  .markdown-ul .markdown-li{list-style-type:disc}
+  .markdown-ul .markdown-ul .markdown-li{list-style-type:circle}
+  .markdown-ul .markdown-ul .markdown-ul .markdown-li{list-style-type:square}
+  .markdown-ol .markdown-li{list-style-type:decimal}
+  .markdown-blockquote{border-left:4px solid var(--brand);background:#f8f9fa;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;color:var(--muted);font-style:italic}
+  .markdown-code{background:#f1f3f4;color:var(--warn);padding:2px 6px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:0.9em}
+  .markdown-table{border-collapse:collapse;width:100%;margin:10px 0;border:1px solid #ddd}
+  .markdown-table th,.markdown-table td{border:1px solid #ddd;padding:6px 8px;text-align:left}
+  .markdown-table th{background:#f8f9fa;font-weight:600}
+  .markdown-hr{border:none;border-top:1px solid #ddd;margin:20px 0}
+  .markdown-link{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:border-color 0.2s}
+  .markdown-link:hover{color:var(--brand);border-bottom-color:var(--brand)}
+  .markdown-pre{background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;padding:16px;margin:16px 0;overflow-x:auto;font-family:ui-monospace,Menlo,monospace;font-size:0.9em;line-height:1.5}
+  .markdown-code-block{background:transparent;padding:0;border:none;color:var(--txt);white-space:pre-wrap}
+  .markdown-blockquote{border-left:4px solid var(--brand);background:#f8f9fa;padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0;color:var(--muted);font-style:italic;position:relative}
+  .markdown-blockquote::before{content:'"';font-size:2em;color:var(--brand);position:absolute;top:8px;left:8px;opacity:0.3}
+  .preview .markdown-h1,.preview .markdown-h2,.preview .markdown-h3,.preview .markdown-h4,.preview .markdown-h5,.preview .markdown-h6,
+  .preview .markdown-p,.preview .markdown-ul,.preview .markdown-ol,.preview .markdown-li,.preview .markdown-blockquote,.preview .markdown-code{color:inherit}
+  .web-link{color:var(--brand);text-decoration:none;word-break:break-all}
+  .web-link:hover{text-decoration:underline}
+  .clickable-query-code{color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important}
+  .clickable-query-code:hover{color:#1d4ed8 !important;text-decoration:underline !important}
+  .excel-table .clickable-query-code{color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important}
+  .excel-table .clickable-query-code:hover{color:#1d4ed8 !important;text-decoration:underline !important}
+  .excel-table td .clickable-query-code{color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important}
+  .excel-table td .clickable-query-code:hover{color:#1d4ed8 !important;text-decoration:underline !important}
+  .excel-table tr:hover td{background:#f0f7ff}
+  .footer{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:18px;margin:18px 18px 18px;text-align:center}
+  .footer p{margin:0;color:var(--muted);font-size:12px}
+  .panel{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+  .panel.left-panel{height:calc(100vh - 236px)}
+  .panel.right-panel{flex:1;min-height:200px}
+  .panel.copy-panel{flex:1;min-height:200px}
+  .panel.button-panel{flex:0 0 auto;height:auto;min-height:auto;padding:12px 14px}
+  h3{margin:0 0 8px;font-size:16px;color:var(--brand)}
+  .preview{flex:1;overflow:auto;border:1px dashed #e5e7eb;border-radius:10px;padding:14px;background:#fff;min-height:0;overflow-y:auto;display:flex;flex-direction:column;height:100%;white-space:normal}
+  .preview img{max-width:100%;display:block;margin:10px 0;border-radius:8px}
+  .right{display:flex;flex-direction:column;gap:8px;height:calc(100vh - 236px)}
+  .copy-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;flex:6}
+  .markdown-section{flex:4}
+  textarea{flex:1;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;font-family:ui-monospace,Menlo,monospace;resize:none;min-height:0;line-height:1.5}
+  .row{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+  .btn{border:none;border-radius:10px;padding:8px 14px;background:var(--brand);color:#fff;cursor:pointer}
+  .btn:hover{filter:brightness(.96)}
+  .btn-outline{background:#fff;color:#374151;border:1px solid #d1d5db}
+  .btn-ok{background:var(--ok)}
+  .grid-full{grid-column:1/3}
+  .muted{color:var(--muted);font-size:12px}
+  .error{display:none;margin-bottom:10px;padding:8px 12px;border-radius:10px;background:#FEF2F2;border:1px solid #FCA5A5;color:var(--warn)}
+  .tag{font-size:12px;color:#111;background:#eef2ff;border:1px solid #e0e7ff;border-radius:8px;padding:3px 8px}
+  
+  /* MD检查特有样式 */
+  .check-result{background:#f8f9fa;border:1px solid #e9ecef;border-radius:8px;padding:15px;margin:10px 0}
+  .check-item{display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px;border-radius:6px;background:#fff}
+  .check-item.pass{background:#d1f2eb;border-left:4px solid var(--ok)}
+  .check-item.fail{background:#ffeaa7;border-left:4px solid var(--warn)}
+  .check-icon{font-size:18px}
+  .check-text{flex:1}
+  .check-status{font-weight:600}
+  .check-status.pass{color:var(--ok)}
+  .check-status.fail{color:var(--warn)}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MD检查</h1>
+        <div class="header-right">
+            <div class="upload-section">
+                <input type="file" id="excelFile" accept=".xlsx,.xls,.xlsm,.csv" style="display:none" onchange="handleFileUpload(this)">
+                <button class="upload-btn" onclick="document.getElementById('excelFile').click()">选择文件</button>
+                <div id="fileInfo" class="file-info">未选择文件</div>
+            </div>
+            
+            <div class="progress-section">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <div id="progressText" class="progress-text">等待检查</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="query-section">
+        <div class="query-display">
+            <span class="query-label">当前检查项：</span>
+            <span id="currentQuery" class="query-text">未设置</span>
+        </div>
+        <div class="navigation-buttons">
+            <button class="nav-btn next-btn" onclick="nextQuery()">下一个</button>
+            <button class="nav-btn prev-btn" onclick="previousQuery()">上一个</button>
+        </div>
+    </div>
+
+    <div class="container">
+            <div class="panel left-panel">
+    <h3>答案 MD 渲染</h3>
+    <div id="errorBox" class="error"></div>
+    <div id="renderedPreview" class="preview" style="flex:1;min-height:400px;"></div>
+            </div>
+
+  <div class="right">
+    <div class="copy-row">
+            <div class="panel copy-panel">
+      <div class="row">
+        <h3 style="flex:1">MD内容输入</h3>
+        <button class="btn btn-outline" onclick="clearLeft()">清空</button>
+            </div>
+      <textarea id="leftMarkdown" placeholder="从表格自动获取当前query的answer…"></textarea>
+      <div class="muted" style="margin-top:6px">自动从表格获取当前query的answer内容。</div>
+            </div>
+
+    <div class="panel copy-panel">
+      <div class="row">
+        <h3 style="flex:1">检查规则</h3>
+        <button class="btn btn-outline" onclick="clearRight()">重置</button>
+                </div>
+      <textarea id="rightMarkdown" placeholder="默认检查规则…"># MD检查规则
+
+## 1. 格式检查
+- 查看是否有markdown格式露出（如**、*、`、#等符号直接显示）
+- 检查表格格式是否正确渲染
+- 验证列表格式是否规范
+
+## 2. 内容匹配检查
+- 当前答案和query匹配错误（正文没有query的关键词）
+- 检查答案是否回答了query的核心问题
+- 验证答案的完整性和准确性
+
+## 3. 结构完整性检查
+- 检查答案的逻辑结构是否清晰
+- 验证关键信息点是否完整
+- 确认答案格式是否符合要求
+
+## 4. 质量检查
+- 检查答案的专业性和准确性
+- 验证内容的可读性和易懂性
+- 确认答案是否满足用户需求</textarea>
+      <div class="muted" style="margin-top:6px">默认的Markdown检查规则和标准。</div>
+      <div style="margin-top:10px;">
+        <button class="btn btn-primary" onclick="performCheck()">开始检查</button>
+      </div>
+            </div>
+    </div>
+    
+    <!-- 检查结果显示区域 -->
+    <div class="panel copy-panel" id="checkResultPanel" style="display:none;">
+      <div class="row">
+        <h3 style="flex:1">检查结果</h3>
+        <button class="btn btn-outline" onclick="copyCheckResult()">复制结果</button>
+      </div>
+      <div id="checkResultDisplay"></div>
+      <div class="muted" style="margin-top:6px">MD检查结果和问题详情。</div>
+    </div>
+            
+        </div>
+    </div>
+    
+    <div class="excel-display-section" id="excelDisplaySection">
+        <div class="excel-header">
+            <h3>Excel 内容展示</h3>
+            <div class="excel-header-buttons">
+                <button class="download-btn" onclick="downloadExcel()" id="downloadBtn" style="display:none">下载Excel</button>
+                <button class="close-btn" onclick="closeExcelDisplay()">×</button>
+            </div>
+        </div>
+        <div class="excel-content" id="excelContent">
+            <div class="no-file-message">
+                <div class="no-file-icon">📄</div>
+                <p>未上传文档</p>
+                <span class="no-file-hint">请在上方选择Excel文件进行上传</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>© 2025 MD检查 · 智能Markdown内容检查工具</p>
+    </div>
+
+    <script>
+/* ---------- Markdown 预览（简单渲染） ---------- */
+function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function renderMarkdown(md){
+  if(!md) return '';
+  
+  // 处理代码块
+  md = md.replace(/```([^`\n]*)\n([\s\S]*?)```/g,(m,lang,code)=>'<pre><code>'+escapeHtml(code)+'</code></pre>');
+  
+  // 处理图片 - 增强支持更多格式
+  md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(match, alt, src) {
+    console.log('Processing image:', {match, alt, src});
+    return `<img alt="${alt}" src="${src}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">`;
+  });
+  
+  // 处理链接
+  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  
+  // 处理粗体和斜体
+  md = md.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');
+  
+  // 处理标题 - 增强样式
+  md = md.replace(/^######\s+(.*)$/gm,'<h6 class="markdown-h6">$1</h6>')
+         .replace(/^#####\s+(.*)$/gm,'<h5 class="markdown-h5">$1</h5>')
+         .replace(/^####\s+(.*)$/gm,'<h4 class="markdown-h4">$1</h4>')
+         .replace(/^###\s+(.*)$/gm,'<h3 class="markdown-h3">$1</h3>')
+         .replace(/^##\s+(.*)$/gm,'<h2 class="markdown-h2">$1</h2>')
+         .replace(/^#\s+(.*)$/gm,'<h1 class="markdown-h1">$1</h1>');
+  
+  // 处理引用
+  md = md.replace(/^\>\s?(.*)$/gm,'<blockquote class="markdown-blockquote">$1</blockquote>');
+  
+  // 处理水平线
+  md = md.replace(/^---$/gm,'<hr class="markdown-hr">');
+  
+  // 处理无序列表 - 支持嵌套
+  md = md.replace(/^(?:\s*[-*+]\s+.+(?:\n(?:\s{2,}[-*+]\s+.+)*)*)/gm, block => {
+    const lines = block.trim().split(/\n/);
+    const result = [];
+    let currentLevel = 0;
+    let currentList = [];
+    let listStack = []; // 用于跟踪嵌套的列表层级
+    
+    for (const line of lines) {
+      const match = line.match(/^(\s*)([-*+])\s+(.+)$/);
+      if (match) {
+        const [, indent, bullet, content] = match;
+        const level = Math.floor(indent.length / 2);
+        
+        if (level > currentLevel) {
+          // 开始新的嵌套列表
+          if (currentList.length > 0) {
+            listStack.push(currentList);
+          }
+          currentList = [];
+          currentLevel = level;
+        } else if (level < currentLevel) {
+          // 结束当前嵌套列表
+          if (currentList.length > 0) {
+            const nestedUl = `<ul class="markdown-ul">${currentList.join('')}</ul>`;
+            if (listStack.length > 0) {
+              listStack[listStack.length - 1].push(`<li class="markdown-li">${nestedUl}</li>`);
+            } else {
+              result.push(nestedUl);
+            }
+          }
+          currentList = [];
+          currentLevel = level;
+        }
+        
+        currentList.push(`<li class="markdown-li">${content}</li>`);
+      }
+    }
+    
+    // 处理剩余的列表项
+    if (currentList.length > 0) {
+      const finalUl = `<ul class="markdown-ul">${currentList.join('')}</ul>`;
+      if (listStack.length > 0) {
+        listStack[listStack.length - 1].push(`<li class="markdown-li">${finalUl}</li>`);
+      } else {
+        result.push(finalUl);
+      }
+    }
+    
+    // 处理所有嵌套的列表
+    while (listStack.length > 0) {
+      const nestedList = listStack.pop();
+      const nestedUl = `<ul class="markdown-ul">${nestedList.join('')}</ul>`;
+      if (listStack.length > 0) {
+        listStack[listStack.length - 1].push(`<li class="markdown-li">${nestedUl}</li>`);
+      } else {
+        result.push(nestedUl);
+      }
+    }
+    
+    return result.join('');
+  });
+  
+  // 处理有序列表 - 保留原始序号
+  md = md.replace(/^(?:\s*\d+\.\s+.+\n?)+/gm, block=>{
+    const items = block.trim().split(/\n/).map(l=>{
+      const match = l.match(/^\s*(\d+)\.\s+(.+)$/);
+      if (match) {
+        const [, number, content] = match;
+        return `<li class="markdown-li" value="${number}">${content}</li>`;
+      }
+      return '';
+    }).filter(item => item.length > 0);
+    return '<ol class="markdown-ol">' + items.join('') + '</ol>';
+  });
+  
+  // 处理行内代码
+  md = md.replace(/`([^`]+)`/g,'<code class="markdown-code">$1</code>');
+  
+  // 处理表格 - 精确匹配，不影响后续段落
+  md = md.replace(/^(\|.+\|)\s*\n(\|[ :\-|]+\|)\s*\n((?:\|.*\|\s*\n?)*)/gm, (match, header, sep, body) => {
+    // 确保分隔行包含足够的连字符
+    if (!sep.match(/^[\s|]*[-:|\s]+[\s|]*$/)) {
+      return match; // 不是有效的表格分隔行，返回原文本
+    }
+    
+    const toRow = line => line.trim().replace(/^\||\|$/g, '').split('|').map(s => s.trim());
+    
+    const headers = toRow(header);
+    const rows = body.trim().split(/\n/).filter(Boolean).map(toRow);
+    
+    const thead = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>`;
+    const tbody = `<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    
+    return `<table class="markdown-table">${thead}${tbody}</table>\n`;
+  });
+  
+  // 处理段落
+  return md.split(/\n/).map(l=>{
+    if(/^<h\d|^<ul>|^<ol>|^<pre>|^<blockquote>|^<img|^<table|^<hr/.test(l)) return l;
+    if(!l.trim()) return '';
+    return '<p class="markdown-p">'+l+'</p>';
+  }).join('\n');
+}
+
+/* ---------- 表格数据管理 ---------- */
+let currentQueryIndex = 0;
+let extractedData = []; // 存储从Excel提取的query和answer数据
+
+// Markdown格式检测函数
+function isMarkdownFormat(text) {
+    if (!text || typeof text !== 'string') return false;
+    // 检查是否包含markdown格式的链接 [text](url)
+    return /\[.*?\]\(.*?\)/.test(text) || text.includes('![') || text.includes('](') || 
+           /^#{1,6}\s+/.test(text) || /\*\*.*?\*\*/.test(text) || /\*.*?\*/.test(text) ||
+           /^[-*+]\s+/.test(text) || /^\d+\.\s+/.test(text) || /`.*?`/.test(text);
+}
+
+function extractDataFromExcel(excelData) {
+    extractedData = [];
+    
+    if (!excelData || excelData.length === 0) {
+        updateQueryDisplay();
+        return;
+    }
+    
+    console.log('开始提取Excel数据，总行数:', excelData.length);
+    
+    // 遍历所有行，查找数据
+    for (let i = 1; i < excelData.length; i++) { // 从第2行开始（跳过表头）
+        const row = excelData[i];
+        if (row && row.length > 3) {
+            const queryCode = row[0] || '';
+            const query = row[1] || `查询 ${extractedData.length + 1}`;
+            const answer = row[3] || ''; // 第四列（索引3）
+            
+            if (queryCode && query && answer) {
+                console.log('提取到数据:', { queryCode, query, answer });
+                
+                extractedData.push({
+                    queryCode: queryCode,
+                    query: query,
+                    answer: answer,
+                    rowNumber: i
+                });
+            }
+        }
+    }
+    
+    console.log('最终提取的数据:', extractedData);
+    
+    // 选择第一个query
+    currentQueryIndex = 0;
+    updateQueryDisplay();
+    updateMergedMarkdownForCurrentQuery();
+}
+
+function updateQueryDisplay() {
+    console.log('updateQueryDisplay called');
+    const queryText = document.getElementById('currentQuery');
+    const linkText = document.getElementById('currentLink');
+    
+    if (extractedData.length === 0) {
+        console.log('No extracted data, clearing display');
+        if (queryText) queryText.textContent = '未设置';
+        if (linkText) linkText.textContent = '未设置';
+    } else if (currentQueryIndex >= 0 && currentQueryIndex < extractedData.length) {
+        const queryCode = extractedData[currentQueryIndex].queryCode;
+        const query = extractedData[currentQueryIndex].query;
+        const answer = extractedData[currentQueryIndex].answer;
+        
+        if (queryText) {
+            queryText.textContent = `${queryCode} ${query}`;
+        }
+        
+        if (linkText) {
+            linkText.textContent = answer.substring(0, 100) + (answer.length > 100 ? '...' : '');
+        }
+    } else {
+        if (queryText) queryText.textContent = '未设置';
+        if (linkText) linkText.textContent = '未设置';
+    }
+}
+
+function updateMergedMarkdownForCurrentQuery() {
+    if (currentQueryIndex < 0 || currentQueryIndex >= extractedData.length) {
+        console.log('updateMergedMarkdownForCurrentQuery - invalid index:', currentQueryIndex);
+        return;
+    }
+    
+    const currentData = extractedData[currentQueryIndex];
+    if (!currentData) {
+        console.log('updateMergedMarkdownForCurrentQuery - no data at index:', currentQueryIndex);
+        return;
+    }
+    
+    // 更新MD内容输入
+    const leftMarkdown = document.getElementById('leftMarkdown');
+    if (leftMarkdown) {
+        leftMarkdown.value = currentData.answer;
+    }
+    
+    // 执行检查
+    if (typeof mergeNow === 'function') {
+        mergeNow();
+    }
+}
+
+function switchToQuery(dataIndex) {
+    console.log('switchToQuery called with dataIndex:', dataIndex);
+    
+    if (dataIndex < 0 || dataIndex >= extractedData.length) {
+        console.log('Invalid dataIndex:', dataIndex);
+        showMessage('无效的query索引', 'warn');
+        return;
+    }
+    
+    // 更新当前query索引
+    currentQueryIndex = dataIndex;
+    console.log('Updated currentQueryIndex to:', currentQueryIndex);
+    
+    // 更新query显示
+    updateQueryDisplay();
+    
+    // 更新MD内容
+    updateMergedMarkdownForCurrentQuery();
+    
+    const cd = extractedData[currentQueryIndex];
+    if (cd) {
+        showMessage(`已切换到query: ${cd.queryCode} ${cd.query}`, 'success');
+    }
+}
+
+function nextQuery() {
+    if (extractedData.length === 0) {
+        showMessage('请先上传Excel文件', 'warn');
+        return;
+    }
+    
+    if (currentQueryIndex < extractedData.length - 1) {
+        currentQueryIndex++;
+        updateQueryDisplay();
+        updateMergedMarkdownForCurrentQuery();
+        showMessage(`切换到下一个query: ${extractedData[currentQueryIndex].queryCode}`, 'info');
+    } else {
+        showMessage('已经是最后一个query', 'info');
+    }
+}
+
+function previousQuery() {
+    if (extractedData.length === 0) {
+        showMessage('请先上传Excel文件', 'warn');
+        return;
+    }
+    
+    if (currentQueryIndex > 0) {
+        currentQueryIndex--;
+        updateQueryDisplay();
+        updateMergedMarkdownForCurrentQuery();
+        showMessage(`切换到上一个query: ${extractedData[currentQueryIndex].queryCode}`, 'info');
+    } else {
+        showMessage('已经是第一个query', 'info');
+    }
+}
+
+
+/* ---------- MD检查功能 ---------- */
+function checkMarkdown(mdContent) {
+    const checks = [];
+    
+    // 检查markdown格式露出
+    const markdownSymbols = mdContent.match(/\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|#{1,6}\s+|^\s*[-*+]\s+|^\s*\d+\.\s+|^\s*>\s+/gm) || [];
+    const unrenderedSymbols = [];
+    
+    // 检查是否有未渲染的markdown符号
+    if (mdContent.includes('**') && !mdContent.includes('<strong>')) {
+        unrenderedSymbols.push('粗体符号 **');
+    }
+    if (mdContent.includes('*') && !mdContent.includes('<em>') && !mdContent.includes('<strong>')) {
+        unrenderedSymbols.push('斜体符号 *');
+    }
+    if (mdContent.includes('`') && !mdContent.includes('<code>')) {
+        unrenderedSymbols.push('代码符号 `');
+    }
+    if (mdContent.includes('###') && !mdContent.includes('<h3>')) {
+        unrenderedSymbols.push('标题符号 ###');
+    }
+    if (mdContent.includes('---') && !mdContent.includes('<hr')) {
+        unrenderedSymbols.push('分割线符号 ---');
+    }
+    if (mdContent.includes('|') && !mdContent.includes('<table')) {
+        unrenderedSymbols.push('表格符号 |');
+    }
+    
+    if (unrenderedSymbols.length > 0) {
+        checks.push({
+            type: 'fail',
+            icon: '⚠️',
+            text: `发现未渲染的markdown格式: ${unrenderedSymbols.join(', ')}`,
+            status: '失败'
+        });
+    } else {
+        checks.push({
+            type: 'pass',
+            icon: '✅',
+            text: '未发现markdown格式露出',
+            status: '通过'
+        });
+    }
+    
+    // 检查标题结构
+    const headings = mdContent.match(/^#{1,6}\s+.+$/gm) || [];
+    if (headings.length > 0) {
+        checks.push({
+            type: 'pass',
+            icon: '✅',
+            text: `发现 ${headings.length} 个标题`,
+            status: '通过'
+        });
+    } else {
+        checks.push({
+            type: 'fail',
+            icon: '❌',
+            text: '未发现任何标题',
+            status: '失败'
+        });
+    }
+    
+    // 检查图片
+    const images = mdContent.match(/!\[([^\]]*)\]\(([^)]+)\)/g) || [];
+    if (images.length > 0) {
+        checks.push({
+            type: 'pass',
+            icon: '✅',
+            text: `发现 ${images.length} 张图片`,
+            status: '通过'
+        });
+    } else {
+        checks.push({
+            type: 'fail',
+            icon: '❌',
+            text: '未发现任何图片',
+            status: '失败'
+        });
+    }
+    
+    // 检查链接
+    const links = mdContent.match(/\[([^\]]+)\]\(([^)]+)\)/g) || [];
+    if (links.length > 0) {
+        checks.push({
+            type: 'pass',
+            icon: '✅',
+            text: `发现 ${links.length} 个链接`,
+            status: '通过'
+        });
+    } else {
+        checks.push({
+            type: 'fail',
+            icon: '❌',
+            text: '未发现任何链接',
+            status: '失败'
+        });
+    }
+    
+    // 检查代码块
+    const codeBlocks = mdContent.match(/```[\s\S]*?```/g) || [];
+    if (codeBlocks.length > 0) {
+        checks.push({
+            type: 'pass',
+            icon: '✅',
+            text: `发现 ${codeBlocks.length} 个代码块`,
+            status: '通过'
+        });
+    } else {
+        checks.push({
+            type: 'fail',
+            icon: '❌',
+            text: '未发现任何代码块',
+            status: '失败'
+        });
+    }
+    
+    // 检查列表
+    const lists = mdContent.match(/^[\s]*[-*+]\s+.+$/gm) || [];
+    if (lists.length > 0) {
+        checks.push({
+            type: 'pass',
+            icon: '✅',
+            text: `发现 ${lists.length} 个列表项`,
+            status: '通过'
+        });
+    } else {
+        checks.push({
+            type: 'fail',
+            icon: '❌',
+            text: '未发现任何列表',
+            status: '失败'
+        });
+    }
+    
+    return checks;
+}
+
+function generateCheckResult(checks) {
+    let result = '# MD检查结果\n\n';
+    
+    checks.forEach(check => {
+        result += `## ${check.icon} ${check.text}\n`;
+        result += `**状态**: ${check.status}\n\n`;
+    });
+    
+    const passCount = checks.filter(c => c.type === 'pass').length;
+    const totalCount = checks.length;
+    
+    result += `## 📊 检查总结\n`;
+    result += `- 通过: ${passCount}/${totalCount}\n`;
+    result += `- 成功率: ${Math.round((passCount/totalCount)*100)}%\n\n`;
+    
+    return result;
+}
+
+function renderCheckResult(checks) {
+    let html = '<div class="check-result">';
+    html += '<h3>📋 检查结果</h3>';
+    
+    checks.forEach(check => {
+        html += `
+            <div class="check-item ${check.type}">
+                <span class="check-icon">${check.icon}</span>
+                <span class="check-text">${check.text}</span>
+                <span class="check-status ${check.type}">${check.status}</span>
+            </div>
+        `;
+    });
+    
+    const passCount = checks.filter(c => c.type === 'pass').length;
+    const totalCount = checks.length;
+    
+    html += `
+        <div class="check-item">
+            <span class="check-icon">📊</span>
+            <span class="check-text">总计: ${passCount}/${totalCount} 通过</span>
+            <span class="check-status">${Math.round((passCount/totalCount)*100)}%</span>
+        </div>
+    `;
+    
+    html += '</div>';
+    return html;
+}
+
+/* ---------- 基础工具 ---------- */
+function sanitize(s){return (s||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');}
+
+/* ---------- 交互 ---------- */
+function showError(msg){ const b=document.getElementById('errorBox'); b.textContent=msg||''; b.style.display=msg?'block':'none'; }
+function clearLeft(){ document.getElementById('leftMarkdown').value=''; mergeNow(); }
+function clearRight(){ document.getElementById('rightMarkdown').value=''; mergeNow(); }
+
+function performCheck() {
+    const mdContent = document.getElementById('leftMarkdown').value;
+    if (!mdContent.trim()) {
+        showMessage('请先输入MD内容', 'warn');
+        return;
+    }
+    
+    const checks = checkMarkdown(mdContent);
+    const resultHtml = renderCheckResult(checks);
+    
+    document.getElementById('checkResultDisplay').innerHTML = resultHtml;
+    document.getElementById('checkResultPanel').style.display = 'block';
+    
+    showMessage('检查完成', 'success');
+}
+
+function copyCheckResult() {
+    const resultDisplay = document.getElementById('checkResultDisplay');
+    if (!resultDisplay || !resultDisplay.innerHTML.trim()) {
+        showMessage('没有可复制的检查结果', 'warn');
+        return;
+    }
+    
+    // 获取检查结果文本
+    const mdContent = document.getElementById('leftMarkdown').value;
+    const checks = checkMarkdown(mdContent);
+    const resultText = generateCheckResult(checks);
+    
+    navigator.clipboard.writeText(resultText).then(() => {
+        showMessage('检查结果已复制到剪贴板', 'success');
+    }).catch(err => {
+        console.error('复制失败:', err);
+        showMessage('复制失败，请重试', 'warn');
+    });
+}
+
+function showMessage(message, type) {
+    const messageDiv = document.createElement('div');
+    let backgroundColor = 'var(--brand)';
+    
+    if (type === 'warn') {
+        backgroundColor = 'var(--warn)';
+    } else if (type === 'success') {
+        backgroundColor = 'var(--ok)';
+    }
+    
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${backgroundColor};
+        color: white;
+        padding: 10px 15px;
+        border-radius: 6px;
+        font-size: 14px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    messageDiv.textContent = message;
+    
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.parentNode.removeChild(messageDiv);
+        }
+    }, 3000);
+}
+
+function mergeNow(){
+  try{
+    const left  = sanitize(document.getElementById('leftMarkdown').value||'');
+    const right = sanitize(document.getElementById('rightMarkdown').value||'');
+
+    console.log('mergeNow called with left:', left.substring(0, 100) + '...');
+
+    if(!left.trim()){
+      document.getElementById('renderedPreview').innerHTML='';
+      showError('');
+      return;
+    }
+
+    // 渲染MD内容到预览区域
+    const renderedContent = renderMarkdown(left);
+    console.log('Rendered content:', renderedContent.substring(0, 200) + '...');
+    document.getElementById('renderedPreview').innerHTML = renderedContent;
+    showError('');
+  }catch(e){
+    console.error('Error in mergeNow:', e);
+    showError('检查出错：' + e.message);
+  }
+}
+
+// 文件上传相关函数
+function handleFileUpload(input) {
+    const file = input.files[0];
+    const fileInfo = document.getElementById('fileInfo');
+    
+    if (file) {
+        // 显示文件信息
+        fileInfo.textContent = `已选择: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        fileInfo.style.color = 'var(--ok)';
+        
+        // 检查是否为可解析的表格文件
+        const lower = file.name.toLowerCase();
+        if (/(\.xlsx|\.xls|\.xlsm|\.csv)$/.test(lower)) {
+            // 处理Excel文件
+            processExcelFile(file);
+        } else {
+            showMessage('请选择表格文件 (.xlsx/.xls/.xlsm/.csv)', 'warn');
+            fileInfo.textContent = '未选择文件';
+            fileInfo.style.color = 'var(--muted)';
+        }
+    } else {
+        fileInfo.textContent = '未选择文件';
+        fileInfo.style.color = 'var(--muted)';
+    }
+}
+
+function processExcelFile(file) {
+    console.log('处理Excel文件:', file.name);
+    setTimeout(() => {
+        console.log('显示Excel文件信息');
+        displayExcelFileInfo(file);
+    }, 1000);
+}
+
+function displayExcelFileInfo(file) {
+    const excelDisplaySection = document.getElementById('excelDisplaySection');
+    const excelContent = document.getElementById('excelContent');
+    const closeBtn = document.querySelector('.close-btn');
+    
+    // 解析Excel文件并显示内容
+    parseExcelFile(file, excelContent, closeBtn, excelDisplaySection);
+}
+
+function parseExcelFile(file, excelContent, closeBtn, excelDisplaySection) {
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array', dense: true, cellDates: true });
+            
+            // 获取第一个工作表
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // 转换为JSON格式，保留空单元格
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            
+            // 显示表格内容
+            displayExcelTable(jsonData, excelContent, closeBtn, excelDisplaySection);
+            
+        } catch (error) {
+            console.error('Excel解析错误:', error);
+            excelContent.innerHTML = `
+                <div class="error-message">
+                    <div class="error-icon">❌</div>
+                    <h4>文件解析失败</h4>
+                    <p>无法解析表格文件，请确认：1) 文件未损坏；2) 使用 .xlsx/.xls/.xlsm/.csv；3) 非受保护密码文件。</p>
+                </div>
+            `;
+            closeBtn.style.display = 'flex';
+        }
+    };
+    
+    reader.onerror = function() {
+        excelContent.innerHTML = `
+            <div class="error-message">
+                <div class="error-icon">❌</div>
+                <h4>文件读取失败</h4>
+                <p>无法读取文件，请重试</p>
+            </div>
+        `;
+        closeBtn.style.display = 'flex';
+    };
+    
+    reader.readAsArrayBuffer(file);
+}
+
+function displayExcelTable(data, excelContent, closeBtn, excelDisplaySection) {
+    if (!data || data.length === 0) {
+        excelContent.innerHTML = `
+            <div class="empty-message">
+                <div class="empty-icon">📋</div>
+                <h4>表格为空</h4>
+                <p>Excel文件中没有数据</p>
+            </div>
+        `;
+        closeBtn.style.display = 'flex';
+        return;
+    }
+    
+    // 生成表格HTML
+    let tableHTML = '<table class="excel-table">';
+    
+    // 处理每一行数据
+    data.forEach((row, rowIndex) => {
+        if (rowIndex === 0) {
+            // 第一行作为表头
+            tableHTML += '<thead><tr>';
+            row.forEach(cell => {
+                const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+                tableHTML += `<th>${cellValue}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+        } else {
+            // 数据行
+            tableHTML += '<tr>';
+            row.forEach((cell, cellIndex) => {
+                const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+                
+                // 第一列（索引为0）特殊处理：query编码可点击
+                if (cellIndex === 0) {
+                    // 查找对应的extractedData索引，使用queryCode匹配
+                    const dataIndex = extractedData.findIndex(item => item.queryCode === cellValue);
+                    if (dataIndex !== -1) {
+                        tableHTML += `<td><span class="clickable-query-code" onclick="switchToQuery(${dataIndex});">${cellValue}</span></td>`;
+                    } else {
+                        tableHTML += `<td>${cellValue}</td>`;
+                    }
+                } else if (cellIndex === 3) {
+                    // 第四列（索引为3）特殊处理：支持Markdown渲染
+                    if (isMarkdownFormat(cellValue)) {
+                        // 如果是Markdown格式，进行渲染
+                        const renderedContent = renderMarkdown(cellValue);
+                        tableHTML += `<td class="markdown-cell">${renderedContent}</td>`;
+                    } else {
+                        // 普通文本
+                        tableHTML += `<td>${cellValue}</td>`;
+                    }
+                } else {
+                    // 其他列正常显示
+                    tableHTML += `<td>${cellValue}</td>`;
+                }
+            });
+            tableHTML += '</tr>';
+        }
+    });
+    
+    tableHTML += '</tbody></table>';
+    
+    excelContent.innerHTML = tableHTML;
+    closeBtn.style.display = 'flex';
+    
+    // 显示下载按钮
+    const downloadBtn = document.getElementById('downloadBtn');
+    downloadBtn.style.display = 'flex';
+    
+    // 存储Excel数据到全局变量
+    window.excelData = data;
+    
+    // 提取query和answer数据
+    extractDataFromExcel(data);
+    
+    // 重新生成表格HTML，使用更新后的extractedData
+    refreshExcelDisplay();
+    
+    showMessage('Excel文件加载成功', 'success');
+}
+
+function refreshExcelDisplay() {
+    if (!window.excelData) return;
+    
+    const excelContent = document.getElementById('excelContent');
+    const closeBtn = document.querySelector('.close-btn');
+    
+    // 重新生成表格HTML
+    let tableHTML = '<table class="excel-table">';
+    
+    // 处理每一行数据
+    window.excelData.forEach((row, rowIndex) => {
+        if (rowIndex === 0) {
+            // 第一行作为表头
+            tableHTML += '<thead><tr>';
+            row.forEach(cell => {
+                const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+                tableHTML += `<th>${cellValue}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+        } else {
+            // 数据行
+            tableHTML += '<tr>';
+            row.forEach((cell, cellIndex) => {
+                const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+                
+                // 第一列（索引为0）特殊处理：query编码可点击
+                if (cellIndex === 0) {
+                    // 查找对应的extractedData索引，使用queryCode匹配
+                    const dataIndex = extractedData.findIndex(item => item.queryCode === cellValue);
+                    if (dataIndex !== -1) {
+                        tableHTML += `<td><span class="clickable-query-code" onclick="switchToQuery(${dataIndex});">${cellValue}</span></td>`;
+                    } else {
+                        tableHTML += `<td>${cellValue}</td>`;
+                    }
+                } else if (cellIndex === 3) {
+                    // 第四列（索引为3）特殊处理：支持Markdown渲染
+                    if (isMarkdownFormat(cellValue)) {
+                        // 如果是Markdown格式，进行渲染
+                        const renderedContent = renderMarkdown(cellValue);
+                        tableHTML += `<td class="markdown-cell">${renderedContent}</td>`;
+                    } else {
+                        // 普通文本
+                        tableHTML += `<td>${cellValue}</td>`;
+                    }
+                } else {
+                    // 其他列正常显示
+                    tableHTML += `<td>${cellValue}</td>`;
+                }
+            });
+            tableHTML += '</tr>';
+        }
+    });
+    
+    tableHTML += '</tbody></table>';
+    
+    excelContent.innerHTML = tableHTML;
+    closeBtn.style.display = 'flex';
+    
+    // 显示下载按钮
+    const downloadBtn = document.getElementById('downloadBtn');
+    downloadBtn.style.display = 'flex';
+}
+
+function closeExcelDisplay() {
+    const excelContent = document.getElementById('excelContent');
+    const closeBtn = document.querySelector('.close-btn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    
+    // 恢复为未上传状态
+    excelContent.innerHTML = `
+        <div class="no-file-message">
+            <div class="no-file-icon">📄</div>
+            <p>未上传文档</p>
+            <span class="no-file-hint">请在上方选择Excel文件进行上传</span>
+        </div>
+    `;
+    closeBtn.style.display = 'none';
+    downloadBtn.style.display = 'none';
+    
+    // 清空数据
+    window.excelData = null;
+    extractedData = [];
+    currentQueryIndex = 0;
+    updateQueryDisplay();
+}
+
+function downloadExcel() {
+    if (!window.excelData) {
+        showMessage('没有可下载的Excel数据', 'warn');
+        return;
+    }
+    
+    try {
+        // 创建工作簿
+        const wb = XLSX.utils.book_new();
+        
+        // 创建工作表
+        const ws = XLSX.utils.aoa_to_sheet(window.excelData);
+        
+        // 添加工作表到工作簿
+        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+        
+        // 生成文件名（包含时间戳）
+        const now = new Date();
+        const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+        const filename = `md_check_${timestamp}.xlsx`;
+        
+        // 下载文件
+        XLSX.writeFile(wb, filename);
+        
+        showMessage('Excel文件下载成功', 'success');
+    } catch (error) {
+        console.error('下载Excel失败:', error);
+        showMessage('下载Excel失败，请重试', 'warn');
+    }
+}
+
+// 这些函数已经在上面定义了，这里移除重复定义
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const tip = [
+    '# MD检查工具使用说明',
+    '1) 上传Excel文件，系统会自动提取query和answer数据；',
+    '2) 左侧显示当前query的answer内容（MD格式）；',
+    '3) 右侧显示答案的MD渲染效果；',
+    '4) 可以通过上一个/下一个按钮或点击表格中的query编号进行导航。'
+  ].join('\n');
+  console.log('Setting initial tip content');
+  document.getElementById('renderedPreview').innerHTML = renderMarkdown(tip);
+  document.getElementById('leftMarkdown').addEventListener('input', mergeNow);
+  document.getElementById('rightMarkdown').addEventListener('input', mergeNow);
+  
+  // 初始化显示
+  updateQueryDisplay();
+});
+    </script>
+</body>
+</html>

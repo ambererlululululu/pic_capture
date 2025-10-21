@@ -5,7 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Markdown 合并 · 句尾锚点 · 文后挂图（不改字）</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<!-- 备用：CDN 标记库，如果不可用则降级到本地 renderMarkdown -->
+<script>
+  (function(){
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js';
+    s.onload = function(){ console.log('marked loaded'); };
+    s.onerror = function(){ console.warn('marked CDN load failed, using local renderer'); };
+    document.head.appendChild(s);
+  })();
+</script>
     <style>
   :root{--bg:#f6f7fb;--card:#fff;--txt:#111;--muted:#6b7280;--brand:#2563eb;--ok:#10b981;--warn:#b91c1c}
   *{box-sizing:border-box}
@@ -134,7 +143,7 @@
         <h1>Markdown 图片合并工具</h1>
         <div class="header-right">
             <div class="upload-section">
-                <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpload(this)">
+                <input type="file" id="excelFile" accept=".xlsx,.xls,.xlsm,.csv" style="display:none" onchange="handleFileUpload(this)">
                 <button class="upload-btn" onclick="document.getElementById('excelFile').click()">选择文件</button>
                 <div id="fileInfo" class="file-info">未选择文件</div>
             </div>
@@ -405,12 +414,13 @@ function mergeBySentenceAnchor(text1, text2){
                 fileInfo.textContent = `已选择: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
                 fileInfo.style.color = 'var(--ok)';
                 
-                // 检查是否为Excel文件
-                if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                // 检查是否为可解析的表格文件
+                const lower = file.name.toLowerCase();
+                if (/(\.xlsx|\.xls|\.xlsm|\.csv)$/.test(lower)) {
                     // 处理Excel文件（不显示进度条）
                     processExcelFile(file);
                 } else {
-                    alert('请选择Excel文件 (.xlsx 或 .xls)');
+                    alert('请选择表格文件 (.xlsx/.xls/.xlsm/.csv)');
                     fileInfo.textContent = '未选择文件';
                     fileInfo.style.color = 'var(--muted)';
                 }
@@ -462,24 +472,33 @@ function isWebLink(text) {
     return /^https?:\/\/.+/.test(text.trim());
 }
 
-// 新增：检测“混合格式”（首行是链接，后续含有Markdown内容）
+// 新增：检测"混合格式"（首行是链接，后续含有Markdown内容）
 function isHybridFormat(text) {
     if (!text || typeof text !== 'string') return false;
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    console.log('isHybridFormat - lines:', lines);
     if (lines.length < 2) return false;
     const firstIsLink = /^https?:\/\/.+/.test(lines[0]);
+    console.log('isHybridFormat - firstIsLink:', firstIsLink, 'first line:', lines[0]);
     if (!firstIsLink) return false;
     // 后续任意一行包含markdown结构或非链接的正文
     const rest = lines.slice(1).join('\n');
-    return isMarkdownFormat(rest) || /[\u4e00-\u9fa5A-Za-z0-9!\-*#`_\[\(]/.test(rest);
+    const hasMarkdown = isMarkdownFormat(rest);
+    const hasContent = /[\u4e00-\u9fa5A-Za-z0-9!\-*#`_\[\(]/.test(rest);
+    console.log('isHybridFormat - rest content:', rest.substring(0, 100) + '...');
+    console.log('isHybridFormat - hasMarkdown:', hasMarkdown, 'hasContent:', hasContent);
+    return hasMarkdown || hasContent;
 }
 
 // 提取混合格式中的markdown正文（去掉首行链接）
 function getHybridMarkdown(text) {
     if (!text || typeof text !== 'string') return '';
     const parts = text.split(/\r?\n/);
+    console.log('getHybridMarkdown - parts length:', parts.length);
     if (parts.length <= 1) return '';
-    return parts.slice(1).join('\n').trim();
+    const result = parts.slice(1).join('\n').trim();
+    console.log('getHybridMarkdown - result length:', result.length, 'first 100 chars:', result.substring(0, 100));
+    return result;
 }
 
 function extractDataFromExcel(excelData) {
@@ -534,6 +553,8 @@ function extractDataFromExcel(excelData) {
     currentQueryIndex = firstUnprocessedIndex !== -1 ? firstUnprocessedIndex : 0;
     console.log('选择的默认query索引:', currentQueryIndex);
     updateQueryDisplay();
+    // 同步更新复制区（与点击query一致的逻辑）
+    updateMergedMarkdownForCurrentQuery();
 }
 
 function updateQueryDisplay() {
@@ -562,8 +583,13 @@ function updateQueryDisplay() {
         
         // 显示更新后的内容：混合/链接显示首行链接；纯Markdown不显示
         const linkContent = extractedData[currentQueryIndex].link || '';
+        console.log('Link content:', linkContent);
+        console.log('Is web link:', isWebLink(linkContent));
+        console.log('Is hybrid format:', isHybridFormat(linkContent));
+        
         if (isWebLink(linkContent) || isHybridFormat(linkContent)) {
             const firstLine = (linkContent.split(/\r?\n/)[0] || '').trim();
+            console.log('First line (link only):', firstLine);
             linkText.textContent = firstLine;
             linkText.style.color = 'var(--txt)';
             linkText.style.fontStyle = 'normal';
@@ -631,15 +657,23 @@ function previousQuery() {
         return;
     }
     
-    if (currentQueryIndex > 0) {
-        currentQueryIndex--;
+    // 找到前一个需要处理的query（链接或混合格式）
+    let prevIndex = -1;
+    for (let i = currentQueryIndex - 1; i >= 0; i--) {
+        const data = extractedData[i];
+        if (data.link && (isWebLink(data.link) || isHybridFormat(data.link))) {
+            prevIndex = i;
+            break;
+        }
+    }
+    
+    if (prevIndex !== -1) {
+        currentQueryIndex = prevIndex;
         updateQueryDisplay();
-        // 自动清空复制一、复制二输入框
-        clearInputPanels();
-        // 根据当前query的第三列内容决定合并markdown的显示
+        // 跟随点击行策略：设置复制区并由合并逻辑计算
         updateMergedMarkdownForCurrentQuery();
     } else {
-        showMessage('这是第一个查询', 'info');
+        showMessage('没有更多需要处理的查询', 'info');
     }
 }
 
@@ -649,15 +683,23 @@ function nextQuery() {
         return;
     }
     
-    if (currentQueryIndex < extractedData.length - 1) {
-        currentQueryIndex++;
+    // 找到下一个需要处理的query（链接或混合格式）
+    let nextIndex = -1;
+    for (let i = currentQueryIndex + 1; i < extractedData.length; i++) {
+        const data = extractedData[i];
+        if (data.link && (isWebLink(data.link) || isHybridFormat(data.link))) {
+            nextIndex = i;
+            break;
+        }
+    }
+    
+    if (nextIndex !== -1) {
+        currentQueryIndex = nextIndex;
         updateQueryDisplay();
-        // 自动清空复制一、复制二输入框
-        clearInputPanels();
-        // 根据当前query的第三列内容决定合并markdown的显示
+        // 跟随点击行策略：设置复制区并由合并逻辑计算
         updateMergedMarkdownForCurrentQuery();
     } else {
-        showMessage('这是最后一个查询', 'info');
+        showMessage('没有更多需要处理的查询', 'info');
     }
 }
 
@@ -696,7 +738,10 @@ window.switchToQuery = function(dataIndex) {
     // 根据当前query的第三列内容更新合并markdown显示
     updateMergedMarkdownForCurrentQuery();
     
-    showMessage(`已切换到query: ${currentData.queryCode} ${currentData.query}`, 'success');
+    const cd = extractedData[currentQueryIndex];
+    if (cd) {
+        showMessage(`已切换到query: ${cd.queryCode} ${cd.query}`, 'success');
+    }
 };
 
 // 自动清空复制一、复制二输入框的函数
@@ -719,40 +764,48 @@ function clearInputPanels() {
 // 根据当前query的第三列内容更新合并markdown显示
 function updateMergedMarkdownForCurrentQuery() {
     if (currentQueryIndex < 0 || currentQueryIndex >= extractedData.length) {
+        console.log('updateMergedMarkdownForCurrentQuery - invalid index:', currentQueryIndex, 'length:', extractedData.length);
         return;
     }
     
     const currentData = extractedData[currentQueryIndex];
+    if (!currentData) {
+        console.log('updateMergedMarkdownForCurrentQuery - no data at index:', currentQueryIndex);
+        return;
+    }
+    
     const mergedMarkdown = document.getElementById('mergedMarkdown');
     const renderedPreview = document.getElementById('renderedPreview');
     
     if (!mergedMarkdown || !renderedPreview) {
+        console.log('updateMergedMarkdownForCurrentQuery - missing DOM elements');
         return;
     }
     
-    // 链接/混合：按照规则填充复制区并清空合并
+    // 链接/混合/纯Markdown：仅更新复制区；合并区由 mergeNow 基于复制区计算，不单独清空
+    const left = document.getElementById('leftMarkdown');
+    const right = document.getElementById('rightMarkdown');
+    
+    console.log('updateMergedMarkdownForCurrentQuery - currentData.link:', currentData.link);
+    console.log('isHybridFormat:', isHybridFormat(currentData.link));
+    console.log('isWebLink:', isWebLink(currentData.link));
+    
     if (isHybridFormat(currentData.link)) {
-        const left = document.getElementById('leftMarkdown');
-        const right = document.getElementById('rightMarkdown');
-        if (left) left.value = getHybridMarkdown(currentData.link);
+        const markdownContent = getHybridMarkdown(currentData.link);
+        console.log('Hybrid markdown content:', markdownContent);
+        if (left) left.value = markdownContent;
         if (right) right.value = '';
-        mergedMarkdown.value = '';
-        renderedPreview.innerHTML = '';
     } else if (isWebLink(currentData.link)) {
-        const left = document.getElementById('leftMarkdown');
-        const right = document.getElementById('rightMarkdown');
         if (left) left.value = '';
         if (right) right.value = '';
-        mergedMarkdown.value = '';
-        renderedPreview.innerHTML = '';
     } else {
-        // 纯Markdown：显示现有内容
-        const left = document.getElementById('leftMarkdown');
-        const right = document.getElementById('rightMarkdown');
-        if (left) left.value = '';
+        // 纯Markdown：左侧放入现有内容，右侧清空
+        if (left) left.value = currentData.link;
         if (right) right.value = '';
-        mergedMarkdown.value = currentData.link;
-        renderedPreview.innerHTML = renderMarkdown(currentData.link);
+    }
+    // 依据复制区内容重新计算合并区
+    if (typeof mergeNow === 'function') {
+        mergeNow();
     }
 }
 
@@ -863,14 +916,14 @@ function parseExcelFile(file, excelContent, closeBtn, excelDisplaySection) {
     reader.onload = function(e) {
         try {
             const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
+            const workbook = XLSX.read(data, { type: 'array', dense: true, cellDates: true });
             
             // 获取第一个工作表
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
             
-            // 转换为JSON格式
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            // 转换为JSON格式，保留空单元格
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
             
             // 显示表格内容
             displayExcelTable(jsonData, excelContent, closeBtn, excelDisplaySection);
@@ -881,7 +934,7 @@ function parseExcelFile(file, excelContent, closeBtn, excelDisplaySection) {
                 <div class="error-message">
                     <div class="error-icon">❌</div>
                     <h4>文件解析失败</h4>
-                    <p>无法解析Excel文件，请确保文件格式正确</p>
+                    <p>无法解析表格文件，请确认：1) 文件未损坏；2) 使用 .xlsx/.xls/.xlsm/.csv；3) 非受保护密码文件。</p>
                 </div>
             `;
             closeBtn.style.display = 'flex';
@@ -937,8 +990,8 @@ function displayExcelTable(data, excelContent, closeBtn, excelDisplaySection) {
                 // 第三列（索引为2）特殊处理：支持Markdown渲染
                 if (cellIndex === 2) {
                     if (isMarkdownFormat(cellValue)) {
-                        // 如果是Markdown格式，进行渲染
-                        const renderedContent = marked.parse(cellValue);
+                        // 如果是Markdown格式，进行渲染（使用本地渲染函数，避免CDN依赖）
+                        const renderedContent = renderMarkdown(cellValue);
                         tableHTML += `<td class="markdown-cell">${renderedContent}</td>`;
                     } else if (isWebLink(cellValue)) {
                         // 如果是网页链接，渲染为可点击的链接
@@ -973,6 +1026,10 @@ function displayExcelTable(data, excelContent, closeBtn, excelDisplaySection) {
     
     // 刷新Excel显示
     refreshExcelDisplay();
+    // 表格渲染完成后，也同步刷新复制区（避免首次加载未写入）
+    setTimeout(() => {
+        updateMergedMarkdownForCurrentQuery();
+    }, 0);
     
     // 更新进度条
     updateProgressBar();
@@ -1016,8 +1073,8 @@ function displayExcelContent(data) {
             // 第三列（索引为2）特殊处理：支持Markdown渲染
             else if (cellIndex === 2) {
                 if (isMarkdownFormat(cellValue)) {
-                    // 如果是Markdown格式，进行渲染
-                    const renderedContent = marked.parse(cellValue);
+                    // 如果是Markdown格式，进行渲染（使用本地渲染函数，避免CDN依赖）
+                    const renderedContent = renderMarkdown(cellValue);
                     tableHTML += `<td class="markdown-cell">${renderedContent}</td>`;
                 } else if (isWebLink(cellValue)) {
                     // 如果是网页链接，渲染为可点击的链接
@@ -1243,8 +1300,8 @@ function refreshExcelDisplay() {
         else if (cellIndex === 2) {
           
           if (isMarkdownFormat(cellValue)) {
-            // 如果是Markdown格式，进行渲染
-            const renderedContent = marked.parse(cellValue);
+            // 如果是Markdown格式，进行渲染（使用本地渲染函数，避免CDN依赖）
+            const renderedContent = renderMarkdown(cellValue);
             tableHTML += `<td class="markdown-cell">${renderedContent}</td>`;
           } else if (isWebLink(cellValue)) {
             // 如果是网页链接，渲染为可点击的链接

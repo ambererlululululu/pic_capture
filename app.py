@@ -1133,6 +1133,16 @@ def extract_images_rendered():
     except Exception as e:
         return jsonify({'error': f'渲染模式失败: {str(e)}'})
 
+@app.route('/home')
+def home():
+    """主页路由"""
+    return render_template('new_page.html')
+
+@app.route('/md_check')
+def md_check():
+    """MD检查页面路由"""
+    return render_template('md_check.html')
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8080)
 
