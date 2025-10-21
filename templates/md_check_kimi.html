@@ -477,29 +477,11 @@ function renderMarkdownLocal(md) {
         return `<pre><code>${escapeHtml(code)}</code></pre>`;
     });
     
-    // 处理图片 - 增强支持更多格式，添加错误处理
+    // 处理图片 - 先尝试正常渲染，失败时显示占位符
     md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(match, alt, src) {
         console.log('Processing image:', {match, alt, src});
         
-        // 检查是否是受保护的图片链接（如小红书、微博等）
-        const protectedDomains = ['xiaohongshu.com', 'weibo.com', 'douyin.com', 'tiktok.com'];
-        const isProtected = protectedDomains.some(domain => src.includes(domain));
-        
-        if (isProtected) {
-            // 对于受保护的图片，显示链接和提示
-            return `
-                <div style="border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; margin: 10px 0;">
-                    <div style="font-size: 24px; margin-bottom: 10px;">🖼️</div>
-                    <div style="color: #666; margin-bottom: 10px;">图片无法直接显示</div>
-                    <div style="font-size: 12px; color: #999; margin-bottom: 10px;">${alt || '图片'}</div>
-                    <a href="${src}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-size: 14px;">
-                        🔗 点击查看原图
-                    </a>
-                </div>
-            `;
-        }
-        
-        // 普通图片正常渲染，但添加错误处理
+        // 为所有图片添加错误处理，不预先判断域名
         return `<img alt="${alt}" src="${src}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
             <div style="display: none; border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; margin: 10px 0;">
                 <div style="font-size: 24px; margin-bottom: 10px;">🖼️</div>
