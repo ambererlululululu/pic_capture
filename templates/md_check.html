@@ -232,11 +232,25 @@ function renderMarkdown(md){
   // 处理代码块
   md = md.replace(/```([^`\n]*)\n([\s\S]*?)```/g,(m,lang,code)=>'<pre><code>'+escapeHtml(code)+'</code></pre>');
   
-  // 处理图片 - 先尝试正常渲染，失败时显示占位符
+  // 处理图片 - 针对小红书图片优化
   md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(match, alt, src) {
     console.log('Processing image:', {match, alt, src});
     
-    // 为所有图片添加错误处理，不预先判断域名
+    // 检查是否是小红书图片
+    if (src.includes('xiaohongshu.com')) {
+      // 小红书图片：添加特殊属性尝试绕过防盗链
+      return `<img alt="${alt}" src="${src}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <div style="display: none; border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; margin: 10px 0;">
+          <div style="font-size: 24px; margin-bottom: 10px;">🖼️</div>
+          <div style="color: #666; margin-bottom: 10px;">小红书图片无法直接显示</div>
+          <div style="font-size: 12px; color: #999; margin-bottom: 10px;">${alt || '图片'}</div>
+          <a href="${src}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-size: 14px;">
+            🔗 点击查看原图
+          </a>
+        </div>`;
+    }
+    
+    // 普通图片正常渲染
     return `<img alt="${alt}" src="${src}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
       <div style="display: none; border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; margin: 10px 0;">
         <div style="font-size: 24px; margin-bottom: 10px;">🖼️</div>
