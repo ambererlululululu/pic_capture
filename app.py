@@ -1143,10 +1143,6 @@ def md_check():
     """MD检查页面路由"""
     return render_template('md_check.html')
 
-@app.route('/md_check_kimi')
-def md_check_kimi():
-    """MD检查-kimi页面路由"""
-    return render_template('md_check_kimi.html')
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8080)
