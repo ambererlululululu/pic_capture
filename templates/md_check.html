@@ -1151,15 +1151,8 @@ function downloadExcel() {
 // 这些函数已经在上面定义了，这里移除重复定义
 
 document.addEventListener('DOMContentLoaded', ()=>{
-  const tip = [
-    '# MD检查工具使用说明',
-    '1) 上传Excel文件，系统会自动提取query和answer数据；',
-    '2) 左侧显示当前query的answer内容（MD格式）；',
-    '3) 右侧显示答案的MD渲染效果；',
-    '4) 可以通过上一个/下一个按钮或点击表格中的query编号进行导航。'
-  ].join('\n');
   console.log('Setting initial tip content');
-  document.getElementById('renderedPreview').innerHTML = renderMarkdown(tip);
+  document.getElementById('renderedPreview').innerHTML = '<div class="muted" style="text-align: center; padding: 40px 20px;">等待上传Excel文件并选择检查项...</div>';
   document.getElementById('leftMarkdown').addEventListener('input', mergeNow);
   document.getElementById('rightMarkdown').addEventListener('input', mergeNow);
   
