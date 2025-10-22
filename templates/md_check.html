@@ -89,24 +89,23 @@
   .markdown-cell a:hover{text-decoration:underline}
   
   /* 增强的Markdown渲染样式 */
-  .markdown-h1{font-size:28px;font-weight:700;color:var(--txt);margin:24px 0 16px;line-height:1.3;border-bottom:2px solid var(--brand);padding-bottom:8px}
-  .markdown-h2{font-size:24px;font-weight:600;color:var(--txt);margin:20px 0 12px;line-height:1.4}
-  .markdown-h3{font-size:20px;font-weight:600;color:var(--brand);margin:16px 0 10px;line-height:1.4}
-  .markdown-h4{font-size:18px;font-weight:600;color:var(--txt);margin:14px 0 8px;line-height:1.4}
-  .markdown-h5{font-size:16px;font-weight:600;color:var(--txt);margin:12px 0 6px;line-height:1.4}
-  .markdown-h6{font-size:14px;font-weight:600;color:var(--muted);margin:10px 0 4px;line-height:1.4}
-  .markdown-p{margin:2px 0;line-height:1.2;color:var(--txt)}
-  .markdown-ul,.markdown-ol{margin:8px 0;padding-left:32px}
-  .markdown-li{margin:1px 0;line-height:1.1;color:var(--txt);padding-left:16px}
-  .markdown-ul .markdown-li{list-style-type:disc}
-  .markdown-ul .markdown-ul .markdown-li{list-style-type:circle}
-  .markdown-ul .markdown-ul .markdown-ul .markdown-li{list-style-type:square}
-  .markdown-ol .markdown-li{list-style-type:decimal}
+  .markdown-h1{font-size:24px;font-weight:600;color:var(--txt);margin:16px 0 8px;line-height:1.3}
+  .markdown-h2{font-size:20px;font-weight:600;color:var(--txt);margin:16px 0 8px;line-height:1.4}
+  .markdown-h3{font-size:18px;font-weight:600;color:var(--brand);margin:16px 0 8px;line-height:1.4}
+  .markdown-h4{font-size:16px;font-weight:600;color:var(--txt);margin:12px 0 6px;line-height:1.4}
+  .markdown-h5{font-size:14px;font-weight:600;color:var(--txt);margin:12px 0 6px;line-height:1.4}
+  .markdown-h6{font-size:12px;font-weight:600;color:var(--muted);margin:8px 0 4px;line-height:1.4}
+  .markdown-p{margin:0 0 16px;line-height:1.5;color:var(--txt)}
+  .markdown-ul,.markdown-ol{margin:0 0 16px;padding-left:20px}
+  .markdown-li{margin:0 0 4px;line-height:1.4;color:var(--txt)}
+  .markdown-ul{list-style-type:disc}
+  .markdown-ol{list-style-type:decimal}
   .markdown-blockquote{border-left:4px solid var(--brand);background:#f8f9fa;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;color:var(--muted);font-style:italic}
   .markdown-code{background:#f1f3f4;color:var(--warn);padding:2px 6px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:0.9em}
-  .markdown-table{border-collapse:collapse;width:100%;margin:10px 0;border:1px solid #ddd}
-  .markdown-table th,.markdown-table td{border:1px solid #ddd;padding:6px 8px;text-align:left}
-  .markdown-table th{background:#f8f9fa;font-weight:600}
+  .markdown-table{border-collapse:collapse;width:100%;margin:16px 0;border:1px solid #d1d5db;min-width:500px}
+  .markdown-table th{background:#f3f4f6;border:1px solid #d1d5db;padding:12px;text-align:left;font-weight:600;font-size:14px;min-width:80px;white-space:nowrap}
+  .markdown-table td{border:1px solid #d1d5db;padding:12px;font-size:14px;min-width:100px;max-width:250px}
+  .markdown-table tr{border-bottom:1px solid #d1d5db}
   .markdown-hr{border:none;border-top:1px solid #ddd;margin:20px 0}
   .markdown-link{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:border-color 0.2s}
   .markdown-link:hover{color:var(--brand);border-bottom-color:var(--brand)}
@@ -116,6 +115,13 @@
   .markdown-blockquote::before{content:'"';font-size:2em;color:var(--brand);position:absolute;top:8px;left:8px;opacity:0.3}
   .preview .markdown-h1,.preview .markdown-h2,.preview .markdown-h3,.preview .markdown-h4,.preview .markdown-h5,.preview .markdown-h6,
   .preview .markdown-p,.preview .markdown-ul,.preview .markdown-ol,.preview .markdown-li,.preview .markdown-blockquote,.preview .markdown-code{color:inherit}
+  
+  /* 多图片横向布局 - 对齐MarkdownRenderer.tsx */
+  .markdown-image-container{display:flex;flex-wrap:wrap;margin:16px 0;gap:8px}
+  .markdown-image-container .markdown-img{flex:1;min-width:calc(50% - 4px);max-width:calc(50% - 4px)}
+  .markdown-image-container.three-images .markdown-img{min-width:calc(33.333% - 6px);max-width:calc(33.333% - 6px)}
+  .markdown-image-container.four-images .markdown-img{min-width:calc(50% - 4px);max-width:calc(50% - 4px)}
+  .markdown-img{max-width:100%;height:auto;border-radius:8px;margin:16px 0;display:block}
   .web-link{color:var(--brand);text-decoration:none;word-break:break-all}
   .web-link:hover{text-decoration:underline}
   .clickable-query-code{color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important}
@@ -232,14 +238,14 @@ function renderMarkdown(md){
   // 处理代码块
   md = md.replace(/```([^`\n]*)\n([\s\S]*?)```/g,(m,lang,code)=>'<pre><code>'+escapeHtml(code)+'</code></pre>');
   
-  // 处理图片 - 针对小红书图片优化
+  // 处理图片 - 支持多图片横向布局
   md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(match, alt, src) {
     console.log('Processing image:', {match, alt, src});
     
     // 检查是否是小红书图片
     if (src.includes('xiaohongshu.com')) {
       // 小红书图片：添加特殊属性尝试绕过防盗链
-      return `<img alt="${alt}" src="${src}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+      return `<img class="markdown-img" alt="${alt}" src="${src}" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
         <div style="display: none; border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; margin: 10px 0;">
           <div style="font-size: 24px; margin-bottom: 10px;">🖼️</div>
           <div style="color: #666; margin-bottom: 10px;">小红书图片无法直接显示</div>
@@ -251,7 +257,7 @@ function renderMarkdown(md){
     }
     
     // 普通图片正常渲染
-    return `<img alt="${alt}" src="${src}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+    return `<img class="markdown-img" alt="${alt}" src="${src}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
       <div style="display: none; border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; margin: 10px 0;">
         <div style="font-size: 24px; margin-bottom: 10px;">🖼️</div>
         <div style="color: #666; margin-bottom: 10px;">图片加载失败</div>
@@ -260,6 +266,23 @@ function renderMarkdown(md){
           🔗 点击查看原图
         </a>
       </div>`;
+  });
+  
+  // 处理多图片横向布局 - 对齐MarkdownRenderer.tsx
+  md = md.replace(/<p>((?:<img[^>]*>[\s]*)+)<\/p>/g, function(match, images) {
+    const imgMatches = images.match(/<img[^>]*>/g);
+    if (!imgMatches || imgMatches.length < 2) return match;
+    
+    const imageCount = imgMatches.length;
+    let containerClass = 'markdown-image-container';
+    
+    if (imageCount === 3) {
+      containerClass += ' three-images';
+    } else if (imageCount === 4) {
+      containerClass += ' four-images';
+    }
+    
+    return `<div class="${containerClass}">${imgMatches.join('')}</div>`;
   });
   
   // 处理链接
