@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>回答对比</title>
+    <style>
+        /* ===== 设计令牌系统 ===== */
+        :root {
+            /* 颜色系统 */
+            --bg: #ffffff;
+            --surface: #ffffff;
+            --text: #111827;
+            --muted: #6b7280;
+            --brand: #2563eb;
+            --brand-hover: #1d4ed8;
+            --border: #e5e7eb;
+            --hover: #f3f4f6;
+            --success: #10b981;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            
+            /* 圆角系统 */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            
+            /* 阴影系统 */
+            --elev-1: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+            --elev-2: 0 4px 20px rgba(0,0,0,.08);
+            --elev-3: 0 8px 24px rgba(0,0,0,.12);
+            --elev-dropdown: 0 8px 24px rgba(0,0,0,.15);
+            
+            /* 间距系统 */
+            --space-2: 8px;
+            --space-4: 16px;
+            --space-6: 24px;
+            --space-8: 32px;
+            --space-12: 48px;
+            --space-16: 64px;
+            
+            /* 字号行高系统 */
+            --fs-12: 12px;
+            --fs-14: 14px;
+            --fs-16: 16px;
+            --fs-20: 20px;
+            --fs-24: 24px;
+            --lh-1_4: 1.4;
+            --lh-1_6: 1.6;
+            
+            /* 过渡动画 */
+            --transition: box-shadow .2s, transform .15s, border-color .2s, background .2s;
+        }
+        
+        /* 暗色主题支持 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --surface: #1e293b;
+                --text: #f1f5f9;
+                --muted: #94a3b8;
+                --border: #334155;
+                --hover: #334155;
+            }
+        }
+
+        /* ===== 基础重置与全局样式 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: var(--lh-1_6);
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow-x: auto;
+            font-size: var(--fs-14);
+        }
+
+        .container {
+            width: 100%;
+            margin: 0;
+            padding: var(--space-6);
+            max-width: none;
+        }
+
+        /* ===== 顶部Header组件 ===== */
+        .header {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-bottom: var(--space-6);
+            box-shadow: var(--elev-2);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: var(--transition);
+        }
+
+        .header:hover {
+            box-shadow: var(--elev-3);
+        }
+
+        .header h1 {
+            font-size: var(--fs-24);
+            font-weight: 600;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-button {
+            background: var(--brand);
+            color: white;
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-md);
+            border: none;
+            cursor: pointer;
+            font-size: var(--fs-14);
+            font-weight: 500;
+            transition: var(--transition);
+            box-shadow: var(--elev-1);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .file-input-button:hover {
+            background: var(--brand-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--elev-2);
+        }
+
+        .file-input-button:focus-visible {
+            outline: 2px solid var(--brand);
+            outline-offset: 2px;
+        }
+
+        .file-name {
+            color: var(--muted);
+            font-size: var(--fs-14);
+            margin-left: var(--space-2);
+        }
+
+        /* ===== 查询显示卡片 ===== */
+        .query-display {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-bottom: var(--space-6);
+            border-left: 4px solid var(--brand);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--elev-2);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .query-display:hover {
+            box-shadow: var(--elev-3);
+        }
+
+        .query-text {
+            font-size: var(--fs-20);
+            font-weight: 600;
+            line-height: var(--lh-1_6);
+            color: var(--text);
+            margin-bottom: var(--space-4);
+        }
+
+        .query-number {
+            font-size: var(--fs-12);
+            font-weight: 500;
+            color: var(--muted);
+            padding: var(--space-2) var(--space-4);
+            background: var(--hover);
+            border-radius: var(--radius-sm);
+            display: inline-block;
+            backdrop-filter: blur(5px);
+            border: 1px solid var(--border);
+            margin-left: var(--space-4);
+        }
+
+        .query-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: var(--space-2);
+            align-items: center;
+        }
+
+        /* ===== 搜索下拉框 ===== */
+        .search-results {
+            position: fixed;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--elev-dropdown);
+            max-height: 320px;
+            overflow-y: auto;
+            z-index: 9999999;
+            display: none;
+            margin-top: 0px;
+            width: 200px;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-result-item {
+            padding: var(--space-2) var(--space-4);
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .search-result-item:hover {
+            background: var(--hover);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-number {
+            font-weight: 600;
+            color: var(--brand);
+            margin-right: var(--space-2);
+        }
+
+        .search-result-content {
+            color: var(--text);
+            font-size: var(--fs-14);
+            line-height: var(--lh-1_4);
+        }
+
+        .search-section {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            position: relative;
+        }
+
+        .search-controls {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .search-type-select {
+            padding: var(--space-2) var(--space-4);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: var(--fs-14);
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            transition: var(--transition);
+            min-width: 120px;
+        }
+
+        .search-type-select:focus {
+            outline: none;
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-type-select:focus-visible {
+            outline: 2px solid var(--brand);
+            outline-offset: 2px;
+        }
+
+        .search-input {
+            padding: var(--space-2) var(--space-4);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: var(--fs-14);
+            width: 200px;
+            transition: var(--transition);
+            background: var(--surface);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-input:focus-visible {
+            outline: 2px solid var(--brand);
+            outline-offset: 2px;
+        }
+
+        .search-button {
+            background: var(--brand);
+            color: white;
+            border: none;
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: var(--fs-14);
+            font-weight: 500;
+            transition: var(--transition);
+            box-shadow: var(--elev-1);
+        }
+
+        .search-button:hover {
+            background: var(--brand-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--elev-2);
+        }
+
+        .search-button:focus-visible {
+            outline: 2px solid var(--brand);
+            outline-offset: 2px;
+        }
+
+        /* ===== 导航按钮 ===== */
+        .nav-button {
+            background: var(--brand);
+            color: white;
+            border: none;
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: var(--fs-14);
+            font-weight: 500;
+            transition: var(--transition);
+            min-width: 80px;
+            height: 36px;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--elev-1);
+        }
+
+        .nav-button:hover:not(:disabled) {
+            background: var(--brand-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--elev-2);
+        }
+
+        .nav-button:focus-visible {
+            outline: 2px solid var(--brand);
+            outline-offset: 2px;
+        }
+
+        .nav-button:disabled {
+            background: var(--muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .query-info {
+            color: var(--muted);
+            font-size: var(--fs-14);
+            font-weight: 500;
+            background: var(--hover);
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-sm);
+            backdrop-filter: blur(5px);
+            border: 1px solid var(--border);
+        }
+
+        /* ===== 列选择卡片 ===== */
+        .column-selection {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-bottom: var(--space-6);
+            box-shadow: var(--elev-2);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .column-selection:hover {
+            box-shadow: var(--elev-3);
+        }
+
+        .column-selection h3 {
+            font-size: var(--fs-20);
+            font-weight: 600;
+            margin-bottom: var(--space-4);
+            color: var(--text);
+        }
+
+        .column-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-4);
+        }
+
+        .column-checkbox {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2);
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+
+        .column-checkbox:hover {
+            background: var(--hover);
+        }
+
+        .column-checkbox input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--brand);
+        }
+
+        .column-checkbox label {
+            cursor: pointer;
+            font-size: var(--fs-14);
+            color: var(--text);
+            transition: var(--transition);
+        }
+
+        .column-checkbox label:hover {
+            color: var(--brand);
+        }
+
+        /* ===== 对比网格 ===== */
+        .comparison-grid {
+            display: grid;
+            gap: var(--space-6);
+            margin-bottom: var(--space-6);
+            width: 100%;
+            grid-auto-rows: 1fr;
+            align-items: stretch;
+        }
+
+        .comparison-column {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            box-shadow: var(--elev-2);
+            min-width: 0;
+            overflow-wrap: break-word;
+            flex: 1;
+            width: 100%;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            cursor: grab;
+            position: relative;
+        }
+
+        .comparison-column:hover {
+            box-shadow: var(--elev-3);
+        }
+
+        .comparison-column.dragging {
+            cursor: grabbing;
+            opacity: 0.7;
+            transform: rotate(2deg);
+            z-index: 1000;
+        }
+
+        .comparison-column.drag-over {
+            border: 2px dashed var(--brand);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .drag-handle {
+            position: absolute;
+            top: var(--space-2);
+            right: var(--space-2);
+            width: 24px;
+            height: 24px;
+            background: var(--hover);
+            border-radius: var(--radius-sm);
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: var(--transition);
+            font-size: 14px;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            user-select: none;
+        }
+
+        .comparison-column:hover .drag-handle {
+            opacity: 1;
+        }
+
+        .drag-handle:hover {
+            background: var(--brand);
+            color: white;
+            border-color: var(--brand);
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .column-header {
+            font-size: var(--fs-20);
+            font-weight: 600;
+            color: var(--brand);
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-2);
+            border-bottom: 2px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .column-content {
+            color: var(--text);
+            line-height: var(--lh-1_6);
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* ===== 空状态 ===== */
+        .empty-state {
+            text-align: center;
+            padding: var(--space-16) var(--space-6);
+            color: var(--muted);
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--elev-2);
+            border: 1px solid var(--border);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: var(--space-4);
+            opacity: 0.6;
+        }
+
+        .empty-state-text {
+            font-size: var(--fs-16);
+            margin-bottom: var(--space-2);
+            font-weight: 500;
+        }
+
+        .empty-state-subtext {
+            font-size: var(--fs-14);
+            color: var(--muted);
+        }
+
+        /* ===== 响应式设计 ===== */
+        @media (max-width: 1440px) {
+            .container {
+                padding: var(--space-4);
+            }
+            
+            .comparison-grid {
+                gap: var(--space-4);
+            }
+        }
+
+        @media (max-width: 1280px) {
+            .header {
+                flex-direction: column;
+                gap: var(--space-4);
+                text-align: center;
+            }
+            
+            .query-nav {
+                flex-direction: column;
+                gap: var(--space-4);
+            }
+            
+            .search-section {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .search-controls {
+                flex-direction: column;
+                width: 100%;
+                gap: var(--space-2);
+            }
+            
+            .search-type-select {
+                width: 100%;
+            }
+            
+            .search-input {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .column-checkboxes {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: var(--space-2);
+            }
+            
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--space-2);
+            }
+            
+            .header h1 {
+                font-size: var(--fs-20);
+            }
+            
+            .query-text {
+                font-size: var(--fs-16);
+            }
+            
+            .column-selection h3 {
+                font-size: var(--fs-16);
+            }
+            
+            .column-header {
+                font-size: var(--fs-16);
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .nav-button {
+                width: 100%;
+            }
+        }
+
+        /* ===== 可访问性增强 ===== */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+
+        /* 高对比度模式支持 */
+        @media (prefers-contrast: high) {
+            :root {
+                --border: #000000;
+                --text: #000000;
+                --muted: #333333;
+            }
+        }
+
+        /* ===== Markdown渲染样式优化 ===== */
+        /* 标题样式 - 使用设计令牌 */
+        .markdown-h1{font-size:var(--fs-24);font-weight:600;color:var(--text);margin-top:var(--space-4);margin-bottom:var(--space-2);line-height:1.3}
+        .markdown-h2{font-size:var(--fs-20);font-weight:600;color:var(--text);margin-top:var(--space-4);margin-bottom:var(--space-2);line-height:1.4}
+        .markdown-h3{font-size:var(--fs-16);font-weight:600;color:var(--brand);margin-top:var(--space-4);margin-bottom:var(--space-2);line-height:1.4}
+        .markdown-h4{font-size:var(--fs-16);font-weight:600;color:var(--text);margin:var(--space-4) 0 var(--space-2);line-height:1.4}
+        .markdown-h5{font-size:var(--fs-14);font-weight:600;color:var(--text);margin:var(--space-4) 0 var(--space-2);line-height:1.4}
+        .markdown-h6{font-size:var(--fs-12);font-weight:600;color:var(--muted);margin:var(--space-2) 0 var(--space-2);line-height:1.4}
+        /* 段落样式 */
+        .markdown-p{margin:0 0 var(--space-4);line-height:var(--lh-1_6);color:var(--text)}
+        /* 列表样式 */
+        .markdown-ul{margin:0 0 var(--space-4);list-style-type:disc;list-style-position:inside}
+        .markdown-ol{margin:0 0 var(--space-4);list-style-type:decimal;list-style-position:inside}
+        .markdown-li{margin-bottom:var(--space-2);line-height:var(--lh-1_4);color:var(--text)}
+        .markdown-blockquote{border-left:4px solid var(--brand);background:var(--hover);padding:var(--space-4) var(--space-4);margin:var(--space-4) 0;border-radius:0 var(--radius-md) var(--radius-md) 0;color:var(--muted);font-style:italic}
+        /* 代码样式 */
+        .markdown-code{background:var(--hover);color:var(--danger);padding:var(--space-2) var(--space-2);border-radius:var(--radius-sm);font-family:ui-monospace,Menlo,monospace;font-size:0.9em}
+        /* 表格样式 */
+        .markdown-table-wrapper{overflow-x:auto;margin:var(--space-4) 0;-webkit-overflow-scrolling:touch}
+        .markdown-table{border-collapse:collapse;width:100%;border:1px solid var(--border);min-width:500px}
+        .markdown-table thead,.markdown-table-thead{background:var(--hover)}
+        .markdown-table th,.markdown-table-th{background:var(--hover);border:1px solid var(--border);padding:var(--space-2) var(--space-4);text-align:left;font-weight:600;font-size:var(--fs-14);min-width:80px;white-space:nowrap;vertical-align:top}
+        .markdown-table td,.markdown-table-td{border:1px solid var(--border);padding:var(--space-2) var(--space-4);font-size:var(--fs-14);min-width:100px;max-width:250px;vertical-align:top}
+        .markdown-table tr,.markdown-table-tr{border-bottom:1px solid var(--border)}
+        .markdown-hr{border:none;border-top:1px solid var(--border);margin:var(--space-6) 0}
+        .markdown-link{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:var(--transition)}
+        .markdown-link:hover{color:var(--brand-hover);border-bottom-color:var(--brand)}
+        .markdown-del{text-decoration:line-through;color:var(--muted)}
+        .markdown-pre{background:var(--hover);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--space-4);margin:var(--space-4) 0;overflow-x:auto;font-family:ui-monospace,Menlo,monospace;font-size:0.9em;line-height:var(--lh-1_6)}
+        .markdown-code-block{background:transparent;padding:0;border:none;color:var(--text);white-space:pre-wrap}
+        .markdown-img{max-width:100%;height:auto;border-radius:var(--radius-md);margin:var(--space-4) 0;display:block}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>回答对比</h1>
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls" />
+                    <button class="file-input-button">上传Excel文件</button>
+                </div>
+                <span id="fileName" class="file-name"></span>
+            </div>
+        </div>
+
+        <!-- Query Display -->
+        <div class="query-display" id="queryDisplay" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="query-text" id="queryText"></div>
+                    <div class="query-number" id="queryNumber"></div>
+                </div>
+            </div>
+            <div class="query-nav">
+                <div class="nav-buttons">
+                    <button class="nav-button" id="prevQuery" onclick="previousQuery()">上一个</button>
+                    <button class="nav-button" id="nextQuery" onclick="nextQuery()">下一个</button>
+                    <div class="query-info" id="queryInfo"></div>
+                </div>
+                <div class="search-section">
+                    <div class="search-controls">
+                        <select id="searchType" class="search-type-select">
+                            <option value="number">搜索编号</option>
+                            <option value="content">搜索内容</option>
+                        </select>
+                        <div style="position: relative;">
+                            <input type="text" id="searchInput" class="search-input" placeholder="请输入搜索内容..." />
+                            <div class="search-results" id="searchResults"></div>
+                        </div>
+                    </div>
+                    <button class="search-button" onclick="searchQuery()">搜索</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column Selection -->
+        <div class="column-selection" id="columnSelection" style="display: none;">
+            <h3>选择要对比的列</h3>
+            <div class="column-checkboxes" id="columnCheckboxes"></div>
+        </div>
+
+        <!-- Comparison Grid -->
+        <div class="comparison-grid" id="comparisonGrid"></div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">📊</div>
+            <div class="empty-state-text">请上传Excel文件开始对比</div>
+            <div class="empty-state-subtext">支持.xlsx和.xls格式</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        let excelData = null;
+        let currentQueryIndex = 0;
+        let selectedColumns = [];
+
+        // 文件上传处理
+        document.getElementById('excelFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = file.name;
+                loadExcelFile(file);
+            }
+        });
+
+        // 加载Excel文件
+        function loadExcelFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    excelData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (excelData.length > 0) {
+                        setupColumnSelection();
+                        showQueryDisplay();
+                        updateQueryDisplay();
+                    }
+                } catch (error) {
+                    alert('文件解析失败，请检查文件格式');
+                    console.error('Excel parsing error:', error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 设置列选择
+        function setupColumnSelection() {
+            const checkboxesContainer = document.getElementById('columnCheckboxes');
+            const columnSelection = document.getElementById('columnSelection');
+            
+            if (!excelData || excelData.length === 0) {
+                // 没有Excel数据时，显示俏皮的提示
+                checkboxesContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                        <div style="font-size: 16px; margin-bottom: 8px;">还没有上传Excel文件呢~</div>
+                        <div style="font-size: 14px;">上传后就能看到列选择啦！</div>
+                    </div>
+                `;
+                columnSelection.style.display = 'block';
+                return;
+            }
+            
+            const headers = excelData[0];
+            checkboxesContainer.innerHTML = '';
+            
+            headers.forEach((header, index) => {
+                if (header && header.trim()) {
+                    // 跳过前4列：scene_path, intent_external_key, initial_question, difficulty
+                    // 只显示模型列：Deepseek, ChatGPT, 点点, Kimi, 豆包, Gemini, 问一问, Grok, 元宝
+                    if (index >= 4) {
+                        const checkboxDiv = document.createElement('div');
+                        checkboxDiv.className = 'column-checkbox';
+                        checkboxDiv.innerHTML = `
+                            <input type="checkbox" id="col_${index}" value="${index}" onchange="updateColumnSelection()">
+                            <label for="col_${index}">${header}</label>
+                        `;
+                        checkboxesContainer.appendChild(checkboxDiv);
+                    }
+                }
+            });
+            
+            columnSelection.style.display = 'block';
+        }
+
+        // 更新列选择
+        function updateColumnSelection() {
+            const checkboxes = document.querySelectorAll('#columnCheckboxes input[type="checkbox"]:checked');
+            selectedColumns = Array.from(checkboxes).map(cb => ({
+                index: parseInt(cb.value),
+                name: cb.nextElementSibling.textContent
+            }));
+            
+            updateComparisonGrid();
+        }
+
+        // 显示查询显示区域
+        function showQueryDisplay() {
+            document.getElementById('queryDisplay').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+        }
+
+        // 更新查询显示
+        function updateQueryDisplay() {
+            if (!excelData || excelData.length <= 1) return;
+            
+            const currentRow = excelData[currentQueryIndex + 1]; // +1 因为第一行是header
+            const headers = excelData[0];
+            
+            // 查找initial_question列的索引
+            const initialQuestionIndex = headers.findIndex(header => 
+                header && header.toLowerCase().includes('initial_question')
+            );
+            
+            const queryColumn = initialQuestionIndex >= 0 ? currentRow[initialQuestionIndex] : currentRow[0];
+            
+            // 获取第二列的编号（索引1）
+            const queryNumber = currentRow[1] || '无编号';
+            
+            document.getElementById('queryText').textContent = queryColumn || '无查询内容';
+            document.getElementById('queryNumber').textContent = `编号: ${queryNumber}`;
+            document.getElementById('queryInfo').textContent = `第 ${currentQueryIndex + 1} 个查询，共 ${excelData.length - 1} 个`;
+            
+            // 更新按钮状态
+            document.getElementById('prevQuery').disabled = currentQueryIndex === 0;
+            document.getElementById('nextQuery').disabled = currentQueryIndex >= excelData.length - 2;
+            
+            updateComparisonGrid();
+        }
+
+        // 上一个查询
+        function previousQuery() {
+            if (currentQueryIndex > 0) {
+                currentQueryIndex--;
+                updateQueryDisplay();
+            }
+        }
+
+        // 下一个查询
+        function nextQuery() {
+            if (currentQueryIndex < excelData.length - 2) {
+                currentQueryIndex++;
+                updateQueryDisplay();
+            }
+        }
+
+        // 实时搜索函数
+        function performSearch(searchTerm) {
+            if (!excelData) return;
+
+            const headers = excelData[0];
+            const searchType = document.getElementById('searchType').value;
+            
+            // 查找编号列（第二列）和内容列（第三列）
+            const numberColumnIndex = 1; // 第二列
+            const contentColumnIndex = 2; // 第三列
+            
+            const searchResults = [];
+            
+            if (searchType === 'number') {
+                // 只搜索编号（第二列）
+                for (let i = 1; i < excelData.length; i++) {
+                    const row = excelData[i];
+                    const numberValue = row[numberColumnIndex];
+                    
+                    if (numberValue && numberValue.toString().toLowerCase().includes(searchTerm.toLowerCase())) {
+                        searchResults.push({
+                            index: i - 1,
+                            type: '编号',
+                            value: numberValue,
+                            content: row[contentColumnIndex] || '无内容'
+                        });
+                    }
+                }
+            } else if (searchType === 'content') {
+                // 只搜索内容（第三列）
+                for (let i = 1; i < excelData.length; i++) {
+                    const row = excelData[i];
+                    const contentValue = row[contentColumnIndex];
+                    
+                    if (contentValue && contentValue.toString().toLowerCase().includes(searchTerm.toLowerCase())) {
+                        searchResults.push({
+                            index: i - 1,
+                            type: '内容',
+                            value: contentValue,
+                            content: contentValue
+                        });
+                    }
+                }
+            }
+            
+            console.log('搜索结果:', searchResults);
+            
+            if (searchResults.length === 0) {
+                hideSearchResults();
+            } else if (searchResults.length === 1) {
+                // 只有一个结果，直接跳转
+                currentQueryIndex = searchResults[0].index;
+                updateQueryDisplay();
+                hideSearchResults();
+            } else {
+                // 多个结果，显示下拉选择框
+                showSearchResults(searchResults);
+            }
+        }
+
+        // 搜索查询
+        function searchQuery() {
+            console.log('搜索函数被调用');
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            console.log('搜索词:', searchTerm);
+            console.log('Excel数据是否存在:', !!excelData);
+            
+            if (!searchTerm) {
+                alert('请输入搜索内容');
+                return;
+            }
+            
+            if (!excelData) {
+                alert('请先上传Excel文件');
+                return;
+            }
+
+            const headers = excelData[0];
+            console.log('表头:', headers);
+            console.log('前3行数据:', excelData.slice(0, 4));
+            
+            // 查找编号列（第二列）和内容列（第三列）
+            const numberColumnIndex = 1; // 第二列
+            const contentColumnIndex = 2; // 第三列
+            
+            console.log('搜索编号列索引:', numberColumnIndex);
+            console.log('搜索内容列索引:', contentColumnIndex);
+            console.log('搜索词:', searchTerm);
+            
+            const searchResults = [];
+            
+            // 搜索编号（第二列）
+            for (let i = 1; i < excelData.length; i++) {
+                const row = excelData[i];
+                const numberValue = row[numberColumnIndex];
+                
+                console.log(`检查第${i}行编号列:`, numberValue, '搜索词:', searchTerm);
+                
+                if (numberValue && numberValue.toString().toLowerCase().includes(searchTerm.toLowerCase())) {
+                    console.log('在编号列找到匹配:', numberValue, '行索引:', i);
+                    searchResults.push({
+                        index: i - 1,
+                        type: '编号',
+                        value: numberValue,
+                        content: row[contentColumnIndex] || '无内容'
+                    });
+                }
+            }
+            
+            // 搜索内容（第三列）
+            for (let i = 1; i < excelData.length; i++) {
+                const row = excelData[i];
+                const contentValue = row[contentColumnIndex];
+                
+                if (contentValue && contentValue.toString().toLowerCase().includes(searchTerm.toLowerCase())) {
+                    console.log('在内容列找到匹配:', contentValue, '行索引:', i);
+                    // 避免重复添加（如果编号列已经添加了）
+                    const existingResult = searchResults.find(result => result.index === i - 1);
+                    if (!existingResult) {
+                        searchResults.push({
+                            index: i - 1,
+                            type: '内容',
+                            value: contentValue,
+                            content: contentValue
+                        });
+                    }
+                }
+            }
+            
+            console.log('搜索结果数量:', searchResults.length);
+            
+            if (searchResults.length === 0) {
+                console.log('未找到匹配的查询');
+                alert('未找到匹配的查询');
+                hideSearchResults();
+            } else if (searchResults.length === 1) {
+                // 只有一个结果，直接跳转
+                currentQueryIndex = searchResults[0].index;
+                updateQueryDisplay();
+                hideSearchResults();
+            } else {
+                // 多个结果，显示下拉选择框
+                showSearchResults(searchResults);
+            }
+        }
+
+        // 显示搜索结果下拉框
+        function showSearchResults(results) {
+            const resultsContainer = document.getElementById('searchResults');
+            const searchInput = document.getElementById('searchInput');
+            
+            // 获取搜索框的位置
+            const inputRect = searchInput.getBoundingClientRect();
+            
+            // 关键：把下拉挂到 body，避免祖先的 backdrop-filter/transform 影响
+            if (resultsContainer.parentElement !== document.body) {
+                document.body.appendChild(resultsContainer);
+            }
+            
+            resultsContainer.innerHTML = '';
+            
+            results.forEach((result, idx) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'search-result-item';
+                resultItem.onclick = () => selectSearchResult(result);
+                
+                // 获取编号和query内容
+                const numberValue = excelData[result.index + 1][1]; // 第二列（编号）
+                const queryContent = excelData[result.index + 1][2]; // 第三列（query内容）
+                
+                resultItem.innerHTML = `
+                    <div class="search-result-content">
+                        <span style="color: var(--brand); font-weight: 500;">${numberValue}</span>
+                        <span style="color: var(--text); margin-left: 8px;">${queryContent}</span>
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(resultItem);
+            });
+            
+            // 设置下拉框位置
+            resultsContainer.style.position = 'fixed';
+            resultsContainer.style.top = (inputRect.bottom) + 'px'; // 贴在输入框下缘
+            resultsContainer.style.left = inputRect.left + 'px';
+            resultsContainer.style.width = inputRect.width + 'px';
+            resultsContainer.style.zIndex = '2147483647'; // 最高层级保险
+            resultsContainer.style.display = 'block';
+        }
+
+        // 隐藏搜索结果下拉框
+        function hideSearchResults() {
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.style.display = 'none';
+        }
+
+        // 选择搜索结果
+        function selectSearchResult(result) {
+            currentQueryIndex = result.index;
+            updateQueryDisplay();
+            hideSearchResults();
+        }
+
+        // 更新搜索输入框placeholder
+        function updateSearchPlaceholder() {
+            const searchInput = document.getElementById('searchInput');
+            const searchType = document.getElementById('searchType').value;
+            
+            if (searchType === 'number') {
+                searchInput.placeholder = '请输入编号...';
+            } else if (searchType === 'content') {
+                searchInput.placeholder = '请输入查询内容...';
+            }
+        }
+
+        // 搜索框实时搜索和点击外部关闭下拉框
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const searchTypeSelect = document.getElementById('searchType');
+            
+            if (searchInput) {
+                // 实时搜索
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.trim();
+                    if (searchTerm.length >= 2) { // 至少2个字符才开始搜索
+                        performSearch(searchTerm);
+                    } else {
+                        hideSearchResults();
+                    }
+                });
+                
+                // 回车键搜索
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        searchQuery();
+                    }
+                });
+            }
+            
+            // 搜索类型改变时更新placeholder
+            if (searchTypeSelect) {
+                searchTypeSelect.addEventListener('change', function() {
+                    updateSearchPlaceholder();
+                    // 清空搜索输入框
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) {
+                        searchInput.value = '';
+                        hideSearchResults();
+                    }
+                });
+                
+                // 初始化placeholder
+                updateSearchPlaceholder();
+            }
+            
+            // 点击页面其他地方关闭搜索结果下拉框
+            document.addEventListener('click', function(e) {
+                const searchInputEl = document.getElementById('searchInput');
+                const resultsEl = document.getElementById('searchResults');
+                if (
+                    searchInputEl && resultsEl &&
+                    e.target !== searchInputEl &&
+                    !searchInputEl.contains(e.target) &&
+                    e.target !== resultsEl &&
+                    !resultsEl.contains(e.target)
+                ) {
+                    hideSearchResults();
+                }
+            });
+            
+            // 页面加载时初始化显示框架
+            setupColumnSelection();
+            updateComparisonGrid();
+        });
+
+        // 更新对比网格
+        function updateComparisonGrid() {
+            const grid = document.getElementById('comparisonGrid');
+            
+            if (!excelData || selectedColumns.length === 0) {
+                // 没有Excel数据或没有选择列时，显示俏皮的提示
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--muted);">
+                        <div style="font-size: 64px; margin-bottom: 20px;">🔍</div>
+                        <div style="font-size: 18px; margin-bottom: 12px; font-weight: 500;">还没有选择要对比的列呢~</div>
+                        <div style="font-size: 14px; margin-bottom: 8px;">上传Excel文件并选择列后，就能看到精彩的对比啦！</div>
+                        <div style="font-size: 12px; color: #9ca3af;">✨ 期待你的数据哦 ✨</div>
+                    </div>
+                `;
+                grid.style.gridTemplateColumns = '1fr';
+                return;
+            }
+            
+            const currentRow = excelData[currentQueryIndex + 1];
+            grid.innerHTML = '';
+            
+            // 设置网格列数 - 平铺撑满整页，确保列平均分配
+            grid.style.gridTemplateColumns = `repeat(${selectedColumns.length}, minmax(0, 1fr))`;
+            grid.style.width = '100%';
+            grid.style.display = 'grid';
+            
+            selectedColumns.forEach((column, index) => {
+                const columnDiv = document.createElement('div');
+                columnDiv.className = 'comparison-column';
+                columnDiv.draggable = true;
+                columnDiv.dataset.columnIndex = index;
+                
+                // 添加拖拽手柄
+                const dragHandle = document.createElement('div');
+                dragHandle.className = 'drag-handle';
+                dragHandle.innerHTML = '⋮⋮';
+                dragHandle.title = '拖拽重新排序';
+                dragHandle.setAttribute('draggable', 'false'); // 防止手柄本身被拖拽
+                
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'column-header';
+                headerDiv.textContent = column.name;
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'column-content';
+                const content = currentRow[column.index] || '';
+                contentDiv.innerHTML = renderMarkdown(content);
+                
+                columnDiv.appendChild(dragHandle);
+                columnDiv.appendChild(headerDiv);
+                columnDiv.appendChild(contentDiv);
+                grid.appendChild(columnDiv);
+            });
+            
+            // 添加拖拽事件监听器
+            setupDragAndDrop();
+        }
+
+        // 设置拖拽排序功能
+        function setupDragAndDrop() {
+            const columns = document.querySelectorAll('.comparison-column');
+            let draggedElement = null;
+            
+            columns.forEach(column => {
+                // 拖拽开始
+                column.addEventListener('dragstart', function(e) {
+                    draggedElement = this;
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', this.outerHTML);
+                });
+                
+                // 拖拽结束
+                column.addEventListener('dragend', function(e) {
+                    this.classList.remove('dragging');
+                    // 移除所有拖拽悬停效果
+                    document.querySelectorAll('.comparison-column').forEach(col => {
+                        col.classList.remove('drag-over');
+                    });
+                    draggedElement = null;
+                });
+                
+                // 拖拽进入
+                column.addEventListener('dragenter', function(e) {
+                    e.preventDefault();
+                    if (this !== draggedElement) {
+                        this.classList.add('drag-over');
+                    }
+                });
+                
+                // 拖拽离开
+                column.addEventListener('dragleave', function(e) {
+                    this.classList.remove('drag-over');
+                });
+                
+                // 拖拽悬停
+                column.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                });
+                
+                // 拖拽放下
+                column.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                    
+                    if (draggedElement && this !== draggedElement) {
+                        // 获取拖拽元素的索引和目标元素的索引
+                        const draggedIndex = parseInt(draggedElement.dataset.columnIndex);
+                        const targetIndex = parseInt(this.dataset.columnIndex);
+                        
+                        // 重新排序 selectedColumns 数组
+                        const draggedColumn = selectedColumns[draggedIndex];
+                        selectedColumns.splice(draggedIndex, 1);
+                        selectedColumns.splice(targetIndex, 0, draggedColumn);
+                        
+                        // 重新渲染网格
+                        updateComparisonGrid();
+                    }
+                });
+            });
+        }
+
+        // Markdown渲染函数 - 复用md_check.html的逻辑
+        function renderMarkdown(md) {
+            if (!md) return '';
+
+            // 1. 处理代码块 - 完全对齐 MarkdownRenderer.tsx
+            md = md.replace(/```([^`\n]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+                return `<pre style="display: block; background: #f3f4f6; padding: 16px; border-radius: 4px; margin: 16px 0; overflow-x: auto;"><code>${escapeHtml(code)}</code></pre>`;
+            });
+
+            // 2. 处理图片 - 完全对齐 MarkdownRenderer.tsx
+            md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, src) => {
+                return `<img class="markdown-img" alt="${alt}" src="${src}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                  <div style="display: none; border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; margin: 10px 0;">
+                    <div style="font-size: 24px; margin-bottom: 10px;">🖼️</div>
+                    <div style="color: #666; margin-bottom: 10px;">图片加载失败</div>
+                    <div style="font-size: 12px; color: #999; margin-bottom: 10px;">${alt || '图片'}</div>
+                    <a href="${src}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-size: 14px;">
+                      🔗 点击查看原图
+                    </a>
+                  </div>`;
+            });
+
+            // 3. 处理多图片横向布局 - 完全对齐 MarkdownRenderer.tsx
+            md = md.replace(/<p>((?:<img[^>]*>[\s]*)+)<\/p>/g, function(match, images) {
+                const imgMatches = images.match(/<img[^>]*>/g);
+                if (!imgMatches || imgMatches.length < 2) return match;
+
+                const imageCount = imgMatches.length;
+                const imageWidth = imageCount === 2 || imageCount === 4
+                    ? 'calc(50% - 0.25rem)'
+                    : 'calc(33.333% - 0.34rem)';
+
+                const wrappedImages = imgMatches.map(img =>
+                    `<div style="width: ${imageWidth}; flex-shrink: 0;">${img}</div>`
+                ).join('');
+
+                return `<div style="display: flex; flex-wrap: wrap; margin-bottom: 16px; gap: 0.5rem;">${wrappedImages}</div>`;
+            });
+
+            // 4. 处理链接
+            md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+            // 5. 处理粗体、斜体、删除线
+            md = md.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                   .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                   .replace(/~~([^~]+)~~/g, '<del class="markdown-del">$1</del>');
+
+            // 6. 处理标题 - 完全对齐 MarkdownRenderer.tsx
+            md = md.replace(/^#\s+(.*)$/gm, '<h1 class="markdown-h1">$1</h1>')
+                   .replace(/^##\s+(.*)$/gm, '<h2 class="markdown-h2">$1</h2>')
+                   .replace(/^###\s+(.*)$/gm, '<h3 class="markdown-h3">$1</h3>')
+                   .replace(/^####\s+(.*)$/gm, '<h4 class="markdown-h4">$1</h4>')
+                   .replace(/^#####\s+(.*)$/gm, '<h5 class="markdown-h5">$1</h5>')
+                   .replace(/^######\s+(.*)$/gm, '<h6 class="markdown-h6">$1</h6>');
+
+            // 7. 处理引用
+            md = md.replace(/^>\s?(.*)$/gm, '<blockquote class="markdown-blockquote">$1</blockquote>');
+
+            // 8. 处理水平线
+            md = md.replace(/^---$/gm, '<hr class="markdown-hr">');
+
+            // 9. 处理无序列表 - 支持嵌套，对齐 MarkdownRenderer.tsx
+            md = md.replace(/^(?:\s{0,3})[*+-]\s+.+(?:\n(?:\s{0,3})[*+-]\s+.+)*/gm, (match) => {
+                const lines = match.split('\n');
+                const result = [];
+                let currentLevel = 0;
+                let currentList = [];
+                let listStack = [];
+
+                for (const line of lines) {
+                    const match = line.match(/^(\s*)([*+-])\s+(.+)$/);
+                    if (match) {
+                        const [, indent, bullet, content] = match;
+                        const level = Math.floor(indent.length / 2);
+
+                        if (level > currentLevel) {
+                            if (currentList.length > 0) {
+                                listStack.push(currentList);
+                            }
+                            currentList = [];
+                            currentLevel = level;
+                        } else if (level < currentLevel) {
+                            if (currentList.length > 0) {
+                                const nestedUl = `<ul class="markdown-ul">${currentList.join('')}</ul>`;
+                                if (listStack.length > 0) {
+                                    listStack[listStack.length - 1].push(`<li class="markdown-li">${nestedUl}</li>`);
+                                } else {
+                                    result.push(nestedUl);
+                                }
+                            }
+                            currentList = [];
+                            currentLevel = level;
+                        }
+
+                        currentList.push(`<li class="markdown-li">${content}</li>`);
+                    }
+                }
+
+                if (currentList.length > 0) {
+                    const finalUl = `<ul class="markdown-ul">${currentList.join('')}</ul>`;
+                    if (listStack.length > 0) {
+                        listStack[listStack.length - 1].push(`<li class="markdown-li">${finalUl}</li>`);
+                    } else {
+                        result.push(finalUl);
+                    }
+                }
+
+                while (listStack.length > 0) {
+                    const nestedList = listStack.pop();
+                    const nestedUl = `<ul class="markdown-ul">${nestedList.join('')}</ul>`;
+                    if (listStack.length > 0) {
+                        listStack[listStack.length - 1].push(`<li class="markdown-li">${nestedUl}</li>`);
+                    } else {
+                        result.push(nestedUl);
+                    }
+                }
+
+                return result.join('');
+            });
+
+            // 10. 处理有序列表 - 支持嵌套，保留原始数字编号
+            md = md.replace(/^(?:\s{0,3})\d+\.\s+.+(?:\n(?:\s{0,3})\d+\.\s+.+)*/gm, (match) => {
+                const lines = match.split('\n');
+                const result = [];
+                let currentLevel = 0;
+                let currentList = [];
+                let listStack = [];
+
+                for (const line of lines) {
+                    const match = line.match(/^(\s*)(\d+)\.\s+(.+)$/);
+                    if (match) {
+                        const [, indent, number, content] = match;
+                        const level = Math.floor(indent.length / 2);
+
+                        if (level > currentLevel) {
+                            if (currentList.length > 0) {
+                                listStack.push(currentList);
+                            }
+                            currentList = [];
+                            currentLevel = level;
+                        } else if (level < currentLevel) {
+                            if (currentList.length > 0) {
+                                const nestedOl = `<ol class="markdown-ol">${currentList.join('')}</ol>`;
+                                if (listStack.length > 0) {
+                                    listStack[listStack.length - 1].push(`<li class="markdown-li">${nestedOl}</li>`);
+                                } else {
+                                    result.push(nestedOl);
+                                }
+                            }
+                            currentList = [];
+                            currentLevel = level;
+                        }
+
+                        currentList.push(`<li class="markdown-li" value="${number}">${content}</li>`);
+                    }
+                }
+
+                if (currentList.length > 0) {
+                    const finalOl = `<ol class="markdown-ol">${currentList.join('')}</ol>`;
+                    if (listStack.length > 0) {
+                        listStack[listStack.length - 1].push(`<li class="markdown-li">${finalOl}</li>`);
+                    } else {
+                        result.push(finalOl);
+                    }
+                }
+
+                while (listStack.length > 0) {
+                    const nestedList = listStack.pop();
+                    const nestedOl = `<ol class="markdown-ol">${nestedList.join('')}</ol>`;
+                    if (listStack.length > 0) {
+                        listStack[listStack.length - 1].push(`<li class="markdown-li">${nestedOl}</li>`);
+                    } else {
+                        result.push(nestedOl);
+                    }
+                }
+
+                return result.join('');
+            });
+
+            // 11. 处理行内代码
+            md = md.replace(/`([^`]+)`/g, '<code class="markdown-code">$1</code>');
+
+            // 12. 处理表格 - 完全对齐 MarkdownRenderer.tsx
+            md = md.replace(/^(\|.+\|)\s*\n(\|[ :\-|]+\|)\s*\n((?:\|.*\|\s*\n?)*)/gm, (match, header, sep, body) => {
+                if (!sep.match(/^[\s|]*[-:|\s]+[\s|]*$/)) return match;
+
+                const toRow = line => line.trim().replace(/^\||\|$/g, '').split('|').map(s => s.trim());
+                const headers = toRow(header);
+                const rows = body.trim().split(/\n/).filter(Boolean).map(toRow);
+
+                const alignRow = toRow(sep);
+                const aligns = alignRow.map(align => {
+                    if (align.startsWith(':') && align.endsWith(':')) return 'center';
+                    if (align.endsWith(':')) return 'right';
+                    if (align.startsWith(':')) return 'left';
+                    return null;
+                });
+
+                const thead = `<thead class="markdown-table-thead"><tr>${headers.map((h, i) =>
+                    `<th class="markdown-table-th"${aligns[i] ? ` style="text-align: ${aligns[i]}"` : ''}>${h}</th>`
+                ).join('')}</tr></thead>`;
+
+                const tbody = `<tbody>${rows.map(r =>
+                    `<tr class="markdown-table-tr">${r.map((c, i) =>
+                        `<td class="markdown-table-td"${aligns[i] ? ` style="text-align: ${aligns[i]}"` : ''}>${c}</td>`
+                    ).join('')}</tr>`
+                ).join('')}</tbody>`;
+
+                return `<div class="markdown-table-wrapper" style="overflow-x: auto; margin: 16px 0; -webkit-overflow-scrolling: touch;"><table class="markdown-table">${thead}${tbody}</table></div>\n`;
+            });
+
+            // 13. 处理段落 - 完全对齐 MarkdownRenderer.tsx
+            return md.split(/\n/).map(line => {
+                if (/^<h\d|^<ul>|^<ol>|^<pre>|^<blockquote>|^<img|^<table|^<hr|^<div|^<code/.test(line)) return line;
+                if (!line.trim()) return '';
+                return `<p class="markdown-p">${line}</p>`;
+            }).join('\n');
+        }
+
+        // HTML转义函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

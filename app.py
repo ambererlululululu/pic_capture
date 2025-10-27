@@ -1144,6 +1144,12 @@ def md_check():
     return render_template('md_check.html')
 
 
+@app.route('/comparison')
+def comparison():
+    """回答对比页面路由"""
+    return render_template('comparison.html')
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8080)
 

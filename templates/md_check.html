@@ -89,26 +89,33 @@
   .markdown-cell a:hover{text-decoration:underline}
   
   /* 增强的Markdown渲染样式 */
-  .markdown-h1{font-size:24px;font-weight:600;color:var(--txt);margin:16px 0 8px;line-height:1.3}
-  .markdown-h2{font-size:20px;font-weight:600;color:var(--txt);margin:16px 0 8px;line-height:1.4}
-  .markdown-h3{font-size:18px;font-weight:600;color:var(--brand);margin:16px 0 8px;line-height:1.4}
+  /* 标题样式 - 对齐MarkdownRenderer.tsx */
+  .markdown-h1{font-size:24px;font-weight:600;color:var(--txt);margin-top:16px;margin-bottom:8px;line-height:1.3}
+  .markdown-h2{font-size:20px;font-weight:600;color:var(--txt);margin-top:16px;margin-bottom:8px;line-height:1.4}
+  .markdown-h3{font-size:18px;font-weight:600;color:var(--brand);margin-top:16px;margin-bottom:8px;line-height:1.4}
   .markdown-h4{font-size:16px;font-weight:600;color:var(--txt);margin:12px 0 6px;line-height:1.4}
   .markdown-h5{font-size:14px;font-weight:600;color:var(--txt);margin:12px 0 6px;line-height:1.4}
   .markdown-h6{font-size:12px;font-weight:600;color:var(--muted);margin:8px 0 4px;line-height:1.4}
+  /* 段落样式 - 对齐MarkdownRenderer.tsx */
   .markdown-p{margin:0 0 16px;line-height:1.5;color:var(--txt)}
-  .markdown-ul,.markdown-ol{margin:0 0 16px;padding-left:20px}
-  .markdown-li{margin:0 0 4px;line-height:1.4;color:var(--txt)}
-  .markdown-ul{list-style-type:disc}
-  .markdown-ol{list-style-type:decimal}
+  /* 列表样式 - 完全对齐MarkdownRenderer.tsx */
+  .markdown-ul{margin:0 0 16px;list-style-type:disc;list-style-position:inside}
+  .markdown-ol{margin:0 0 16px;list-style-type:decimal;list-style-position:inside}
+  .markdown-li{margin-bottom:4px;line-height:1.4;color:var(--txt)}
   .markdown-blockquote{border-left:4px solid var(--brand);background:#f8f9fa;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0;color:var(--muted);font-style:italic}
-  .markdown-code{background:#f1f3f4;color:var(--warn);padding:2px 6px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:0.9em}
-  .markdown-table{border-collapse:collapse;width:100%;margin:16px 0;border:1px solid #d1d5db;min-width:500px}
-  .markdown-table th{background:#f3f4f6;border:1px solid #d1d5db;padding:12px;text-align:left;font-weight:600;font-size:14px;min-width:80px;white-space:nowrap}
-  .markdown-table td{border:1px solid #d1d5db;padding:12px;font-size:14px;min-width:100px;max-width:250px}
-  .markdown-table tr{border-bottom:1px solid #d1d5db}
+  /* 代码样式 - 对齐MarkdownRenderer.tsx */
+  .markdown-code{background:#f3f4f6;color:var(--warn);padding:2px 4px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:0.9em}
+  /* 表格样式 - 完全对齐MarkdownRenderer.tsx */
+  .markdown-table-wrapper{overflow-x:auto;margin:16px 0;-webkit-overflow-scrolling:touch}
+  .markdown-table{border-collapse:collapse;width:100%;border:1px solid #d1d5db;min-width:500px}
+  .markdown-table thead,.markdown-table-thead{background:#f3f4f6}
+  .markdown-table th,.markdown-table-th{background:#f3f4f6;border:1px solid #d1d5db;padding:8px 12px;text-align:left;font-weight:600;font-size:14px;min-width:80px;white-space:nowrap;vertical-align:top}
+  .markdown-table td,.markdown-table-td{border:1px solid #d1d5db;padding:8px 12px;font-size:14px;min-width:100px;max-width:250px;vertical-align:top}
+  .markdown-table tr,.markdown-table-tr{border-bottom:1px solid #d1d5db}
   .markdown-hr{border:none;border-top:1px solid #ddd;margin:20px 0}
   .markdown-link{color:var(--brand);text-decoration:none;border-bottom:1px solid transparent;transition:border-color 0.2s}
   .markdown-link:hover{color:var(--brand);border-bottom-color:var(--brand)}
+  .markdown-del{text-decoration:line-through;color:var(--muted)}
   .markdown-pre{background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;padding:16px;margin:16px 0;overflow-x:auto;font-family:ui-monospace,Menlo,monospace;font-size:0.9em;line-height:1.5}
   .markdown-code-block{background:transparent;padding:0;border:none;color:var(--txt);white-space:pre-wrap}
   .markdown-blockquote{border-left:4px solid var(--brand);background:#f8f9fa;padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0;color:var(--muted);font-style:italic;position:relative}
@@ -116,11 +123,7 @@
   .preview .markdown-h1,.preview .markdown-h2,.preview .markdown-h3,.preview .markdown-h4,.preview .markdown-h5,.preview .markdown-h6,
   .preview .markdown-p,.preview .markdown-ul,.preview .markdown-ol,.preview .markdown-li,.preview .markdown-blockquote,.preview .markdown-code{color:inherit}
   
-  /* 多图片横向布局 - 对齐MarkdownRenderer.tsx */
-  .markdown-image-container{display:flex;flex-wrap:wrap;margin:16px 0;gap:8px}
-  .markdown-image-container .markdown-img{flex:1;min-width:calc(50% - 4px);max-width:calc(50% - 4px)}
-  .markdown-image-container.three-images .markdown-img{min-width:calc(33.333% - 6px);max-width:calc(33.333% - 6px)}
-  .markdown-image-container.four-images .markdown-img{min-width:calc(50% - 4px);max-width:calc(50% - 4px)}
+  /* 图片样式 - 完全对齐MarkdownRenderer.tsx */
   .markdown-img{max-width:100%;height:auto;border-radius:8px;margin:16px 0;display:block}
   .web-link{color:var(--brand);text-decoration:none;word-break:break-all}
   .web-link:hover{text-decoration:underline}
@@ -230,33 +233,19 @@
     </div>
 
     <script>
-/* ---------- Markdown 预览（简单渲染） ---------- */
+/* ---------- Markdown 渲染 - 基于 MarkdownRenderer.tsx 重新实现 ---------- */
 function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-function renderMarkdown(md){
-  if(!md) return '';
+
+function renderMarkdown(md) {
+  if (!md) return '';
   
-  // 处理代码块
-  md = md.replace(/```([^`\n]*)\n([\s\S]*?)```/g,(m,lang,code)=>'<pre><code>'+escapeHtml(code)+'</code></pre>');
+  // 1. 处理代码块 - 完全对齐 MarkdownRenderer.tsx
+  md = md.replace(/```([^`\n]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+    return `<pre style="display: block; background: #f3f4f6; padding: 16px; border-radius: 4px; margin: 16px 0; overflow-x: auto;"><code>${escapeHtml(code)}</code></pre>`;
+  });
   
-  // 处理图片 - 支持多图片横向布局
-  md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(match, alt, src) {
-    console.log('Processing image:', {match, alt, src});
-    
-    // 检查是否是小红书图片
-    if (src.includes('xiaohongshu.com')) {
-      // 小红书图片：添加特殊属性尝试绕过防盗链
-      return `<img class="markdown-img" alt="${alt}" src="${src}" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-        <div style="display: none; border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; margin: 10px 0;">
-          <div style="font-size: 24px; margin-bottom: 10px;">🖼️</div>
-          <div style="color: #666; margin-bottom: 10px;">小红书图片无法直接显示</div>
-          <div style="font-size: 12px; color: #999; margin-bottom: 10px;">${alt || '图片'}</div>
-          <a href="${src}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-size: 14px;">
-            🔗 点击查看原图
-          </a>
-        </div>`;
-    }
-    
-    // 普通图片正常渲染
+  // 2. 处理图片 - 完全对齐 MarkdownRenderer.tsx
+  md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, src) => {
     return `<img class="markdown-img" alt="${alt}" src="${src}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
       <div style="display: none; border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; margin: 10px 0;">
         <div style="font-size: 24px; margin-bottom: 10px;">🖼️</div>
@@ -268,66 +257,66 @@ function renderMarkdown(md){
       </div>`;
   });
   
-  // 处理多图片横向布局 - 对齐MarkdownRenderer.tsx
+  // 3. 处理多图片横向布局 - 完全对齐 MarkdownRenderer.tsx
   md = md.replace(/<p>((?:<img[^>]*>[\s]*)+)<\/p>/g, function(match, images) {
     const imgMatches = images.match(/<img[^>]*>/g);
     if (!imgMatches || imgMatches.length < 2) return match;
     
     const imageCount = imgMatches.length;
-    let containerClass = 'markdown-image-container';
+    const imageWidth = imageCount === 2 || imageCount === 4 
+      ? 'calc(50% - 0.25rem)' 
+      : 'calc(33.333% - 0.34rem)';
     
-    if (imageCount === 3) {
-      containerClass += ' three-images';
-    } else if (imageCount === 4) {
-      containerClass += ' four-images';
-    }
+    const wrappedImages = imgMatches.map(img => 
+      `<div style="width: ${imageWidth}; flex-shrink: 0;">${img}</div>`
+    ).join('');
     
-    return `<div class="${containerClass}">${imgMatches.join('')}</div>`;
+    return `<div style="display: flex; flex-wrap: wrap; margin-bottom: 16px; gap: 0.5rem;">${wrappedImages}</div>`;
   });
   
-  // 处理链接
-  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  // 4. 处理链接
+  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
   
-  // 处理粗体和斜体
-  md = md.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');
+  // 5. 处理粗体、斜体、删除线
+  md = md.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+         .replace(/~~([^~]+)~~/g, '<del class="markdown-del">$1</del>');
   
-  // 处理标题 - 增强样式
-  md = md.replace(/^######\s+(.*)$/gm,'<h6 class="markdown-h6">$1</h6>')
-         .replace(/^#####\s+(.*)$/gm,'<h5 class="markdown-h5">$1</h5>')
-         .replace(/^####\s+(.*)$/gm,'<h4 class="markdown-h4">$1</h4>')
-         .replace(/^###\s+(.*)$/gm,'<h3 class="markdown-h3">$1</h3>')
-         .replace(/^##\s+(.*)$/gm,'<h2 class="markdown-h2">$1</h2>')
-         .replace(/^#\s+(.*)$/gm,'<h1 class="markdown-h1">$1</h1>');
+  // 6. 处理标题 - 完全对齐 MarkdownRenderer.tsx
+  md = md.replace(/^#\s+(.*)$/gm, '<h1 class="markdown-h1">$1</h1>')
+         .replace(/^##\s+(.*)$/gm, '<h2 class="markdown-h2">$1</h2>')
+         .replace(/^###\s+(.*)$/gm, '<h3 class="markdown-h3">$1</h3>')
+         .replace(/^####\s+(.*)$/gm, '<h4 class="markdown-h4">$1</h4>')
+         .replace(/^#####\s+(.*)$/gm, '<h5 class="markdown-h5">$1</h5>')
+         .replace(/^######\s+(.*)$/gm, '<h6 class="markdown-h6">$1</h6>');
   
-  // 处理引用
-  md = md.replace(/^\>\s?(.*)$/gm,'<blockquote class="markdown-blockquote">$1</blockquote>');
+  // 7. 处理引用
+  md = md.replace(/^>\s?(.*)$/gm, '<blockquote class="markdown-blockquote">$1</blockquote>');
   
-  // 处理水平线
-  md = md.replace(/^---$/gm,'<hr class="markdown-hr">');
+  // 8. 处理水平线
+  md = md.replace(/^---$/gm, '<hr class="markdown-hr">');
   
-  // 处理无序列表 - 支持嵌套
-  md = md.replace(/^(?:\s*[-*+]\s+.+(?:\n(?:\s{2,}[-*+]\s+.+)*)*)/gm, block => {
-    const lines = block.trim().split(/\n/);
+  // 9. 处理无序列表 - 支持嵌套，对齐 MarkdownRenderer.tsx
+  md = md.replace(/^(?:\s{0,3})[*+-]\s+.+(?:\n(?:\s{0,3})[*+-]\s+.+)*/gm, (match) => {
+    const lines = match.split('\n');
     const result = [];
     let currentLevel = 0;
     let currentList = [];
-    let listStack = []; // 用于跟踪嵌套的列表层级
+    let listStack = [];
     
     for (const line of lines) {
-      const match = line.match(/^(\s*)([-*+])\s+(.+)$/);
+      const match = line.match(/^(\s*)([*+-])\s+(.+)$/);
       if (match) {
         const [, indent, bullet, content] = match;
         const level = Math.floor(indent.length / 2);
         
         if (level > currentLevel) {
-          // 开始新的嵌套列表
           if (currentList.length > 0) {
             listStack.push(currentList);
           }
           currentList = [];
           currentLevel = level;
         } else if (level < currentLevel) {
-          // 结束当前嵌套列表
           if (currentList.length > 0) {
             const nestedUl = `<ul class="markdown-ul">${currentList.join('')}</ul>`;
             if (listStack.length > 0) {
@@ -344,7 +333,6 @@ function renderMarkdown(md){
       }
     }
     
-    // 处理剩余的列表项
     if (currentList.length > 0) {
       const finalUl = `<ul class="markdown-ul">${currentList.join('')}</ul>`;
       if (listStack.length > 0) {
@@ -354,7 +342,6 @@ function renderMarkdown(md){
       }
     }
     
-    // 处理所有嵌套的列表
     while (listStack.length > 0) {
       const nestedList = listStack.pop();
       const nestedUl = `<ul class="markdown-ul">${nestedList.join('')}</ul>`;
@@ -368,45 +355,102 @@ function renderMarkdown(md){
     return result.join('');
   });
   
-  // 处理有序列表 - 保留原始序号
-  md = md.replace(/^(?:\s*\d+\.\s+.+\n?)+/gm, block=>{
-    const items = block.trim().split(/\n/).map(l=>{
-      const match = l.match(/^\s*(\d+)\.\s+(.+)$/);
+  // 10. 处理有序列表 - 支持嵌套，保留原始数字编号
+  md = md.replace(/^(?:\s{0,3})\d+\.\s+.+(?:\n(?:\s{0,3})\d+\.\s+.+)*/gm, (match) => {
+    const lines = match.split('\n');
+    const result = [];
+    let currentLevel = 0;
+    let currentList = [];
+    let listStack = [];
+    
+    for (const line of lines) {
+      const match = line.match(/^(\s*)(\d+)\.\s+(.+)$/);
       if (match) {
-        const [, number, content] = match;
-        return `<li class="markdown-li" value="${number}">${content}</li>`;
+        const [, indent, number, content] = match;
+        const level = Math.floor(indent.length / 2);
+        
+        if (level > currentLevel) {
+          if (currentList.length > 0) {
+            listStack.push(currentList);
+          }
+          currentList = [];
+          currentLevel = level;
+        } else if (level < currentLevel) {
+          if (currentList.length > 0) {
+            const nestedOl = `<ol class="markdown-ol">${currentList.join('')}</ol>`;
+            if (listStack.length > 0) {
+              listStack[listStack.length - 1].push(`<li class="markdown-li">${nestedOl}</li>`);
+            } else {
+              result.push(nestedOl);
+            }
+          }
+          currentList = [];
+          currentLevel = level;
+        }
+        
+        currentList.push(`<li class="markdown-li" value="${number}">${content}</li>`);
       }
-      return '';
-    }).filter(item => item.length > 0);
-    return '<ol class="markdown-ol">' + items.join('') + '</ol>';
-  });
-  
-  // 处理行内代码
-  md = md.replace(/`([^`]+)`/g,'<code class="markdown-code">$1</code>');
-  
-  // 处理表格 - 精确匹配，不影响后续段落
-  md = md.replace(/^(\|.+\|)\s*\n(\|[ :\-|]+\|)\s*\n((?:\|.*\|\s*\n?)*)/gm, (match, header, sep, body) => {
-    // 确保分隔行包含足够的连字符
-    if (!sep.match(/^[\s|]*[-:|\s]+[\s|]*$/)) {
-      return match; // 不是有效的表格分隔行，返回原文本
     }
     
-    const toRow = line => line.trim().replace(/^\||\|$/g, '').split('|').map(s => s.trim());
+    if (currentList.length > 0) {
+      const finalOl = `<ol class="markdown-ol">${currentList.join('')}</ol>`;
+      if (listStack.length > 0) {
+        listStack[listStack.length - 1].push(`<li class="markdown-li">${finalOl}</li>`);
+      } else {
+        result.push(finalOl);
+      }
+    }
     
+    while (listStack.length > 0) {
+      const nestedList = listStack.pop();
+      const nestedOl = `<ol class="markdown-ol">${nestedList.join('')}</ol>`;
+      if (listStack.length > 0) {
+        listStack[listStack.length - 1].push(`<li class="markdown-li">${nestedOl}</li>`);
+      } else {
+        result.push(nestedOl);
+      }
+    }
+    
+    return result.join('');
+  });
+  
+  // 11. 处理行内代码
+  md = md.replace(/`([^`]+)`/g, '<code class="markdown-code">$1</code>');
+  
+  // 12. 处理表格 - 完全对齐 MarkdownRenderer.tsx
+  md = md.replace(/^(\|.+\|)\s*\n(\|[ :\-|]+\|)\s*\n((?:\|.*\|\s*\n?)*)/gm, (match, header, sep, body) => {
+    if (!sep.match(/^[\s|]*[-:|\s]+[\s|]*$/)) return match;
+    
+    const toRow = line => line.trim().replace(/^\||\|$/g, '').split('|').map(s => s.trim());
     const headers = toRow(header);
     const rows = body.trim().split(/\n/).filter(Boolean).map(toRow);
     
-    const thead = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>`;
-    const tbody = `<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    const alignRow = toRow(sep);
+    const aligns = alignRow.map(align => {
+      if (align.startsWith(':') && align.endsWith(':')) return 'center';
+      if (align.endsWith(':')) return 'right';
+      if (align.startsWith(':')) return 'left';
+      return null;
+    });
     
-    return `<table class="markdown-table">${thead}${tbody}</table>\n`;
+    const thead = `<thead class="markdown-table-thead"><tr>${headers.map((h, i) => 
+      `<th class="markdown-table-th"${aligns[i] ? ` style="text-align: ${aligns[i]}"` : ''}>${h}</th>`
+    ).join('')}</tr></thead>`;
+    
+    const tbody = `<tbody class="markdown-table-tbody">${rows.map(r => 
+      `<tr class="markdown-table-tr">${r.map((c, i) => 
+        `<td class="markdown-table-td"${aligns[i] ? ` style="text-align: ${aligns[i]}"` : ''}>${c}</td>`
+      ).join('')}</tr>`
+    ).join('')}</tbody>`;
+    
+    return `<div class="markdown-table-wrapper" style="overflow-x: auto; margin: 16px 0; -webkit-overflow-scrolling: touch;"><table class="markdown-table">${thead}${tbody}</table></div>\n`;
   });
   
-  // 处理段落
-  return md.split(/\n/).map(l=>{
-    if(/^<h\d|^<ul>|^<ol>|^<pre>|^<blockquote>|^<img|^<table|^<hr/.test(l)) return l;
-    if(!l.trim()) return '';
-    return '<p class="markdown-p">'+l+'</p>';
+  // 13. 处理段落 - 完全对齐 MarkdownRenderer.tsx
+  return md.split(/\n/).map(line => {
+    if (/^<h\d|^<ul>|^<ol>|^<pre>|^<blockquote>|^<img|^<table|^<hr|^<div|^<code/.test(line)) return line;
+    if (!line.trim()) return '';
+    return `<p class="markdown-p">${line}</p>`;
   }).join('\n');
 }
 
