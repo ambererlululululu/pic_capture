@@ -529,6 +529,24 @@
             cursor: grabbing;
         }
 
+        /* 字数徽标 */
+        .char-count-badge {
+            position: absolute;
+            top: var(--space-2);
+            left: var(--space-2);
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            background: var(--brand);
+            color: white;
+            border: 1px solid var(--brand);
+            font-size: var(--fs-12);
+            font-weight: 500;
+            line-height: 1;
+            user-select: none;
+            z-index: 10;
+            box-shadow: var(--elev-1);
+        }
+
         .column-header {
             font-size: var(--fs-20);
             font-weight: 600;
@@ -1223,6 +1241,12 @@
                 dragHandle.title = '拖拽重新排序';
                 dragHandle.setAttribute('draggable', 'false'); // 防止手柄本身被拖拽
                 
+                // 字数徽标（渲染后字数）
+                const countBadge = document.createElement('div');
+                countBadge.className = 'char-count-badge';
+                countBadge.textContent = '0';
+                countBadge.title = '渲染后的字数';
+
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'column-header';
                 headerDiv.textContent = column.name;
@@ -1231,7 +1255,16 @@
                 contentDiv.className = 'column-content';
                 const content = currentRow[column.index] || '';
                 contentDiv.innerHTML = renderMarkdown(content);
+
+                // 统计渲染后的字数（纯文本长度）
+                // 使用 setTimeout 确保 DOM 更新完成后再统计
+                setTimeout(() => {
+                    const plainText = contentDiv.textContent || '';
+                    const charCount = plainText.trim().length;
+                    countBadge.textContent = charCount.toString();
+                }, 0);
                 
+                columnDiv.appendChild(countBadge);
                 columnDiv.appendChild(dragHandle);
                 columnDiv.appendChild(headerDiv);
                 columnDiv.appendChild(contentDiv);
