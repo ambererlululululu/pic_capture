@@ -471,6 +471,34 @@
             }
         }
 
+        .auto-mode-checkbox {
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .auto-mode-checkbox input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--brand);
+            outline: none;
+            border: 1px solid var(--border);
+        }
+
+        .auto-mode-checkbox input[type="checkbox"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+
+        .auto-mode-checkbox label {
+            margin-left: var(--space-2);
+            font-size: var(--fs-14);
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+        }
+
         .column-checkboxes {
             display: flex;
             flex-wrap: wrap;
@@ -855,6 +883,10 @@
                 <span class="toggle-icon" id="toggleIcon">▼</span>
             </div>
             <div class="column-selection-content" id="columnSelectionContent" style="display: none;">
+                <div class="auto-mode-checkbox">
+                    <input type="checkbox" id="autoMode" checked onchange="toggleAutoMode()">
+                    <label for="autoMode">仅展示有回复的模型</label>
+                </div>
                 <div class="column-checkboxes" id="columnCheckboxes"></div>
             </div>
         </div>
@@ -875,6 +907,7 @@
         let excelData = null;
         let currentQueryIndex = 0;
         let selectedColumns = [];
+        let autoMode = true; // 默认开启自动模式
 
         // 文件上传处理
         document.getElementById('excelFile').addEventListener('change', function(e) {
@@ -907,6 +940,27 @@
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        // 切换自动模式
+        function toggleAutoMode() {
+            const autoModeCheckbox = document.getElementById('autoMode');
+            autoMode = autoModeCheckbox.checked;
+            
+            if (autoMode) {
+                // 开启自动模式，清空手动选择的模型
+                clearManualSelection();
+                updateComparisonGrid();
+            } else {
+                // 关闭自动模式，使用手动选择的模型
+                updateColumnSelection();
+            }
+        }
+
+        // 清空手动选择的模型
+        function clearManualSelection() {
+            const checkboxes = document.querySelectorAll('#columnCheckboxes input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
         }
 
         // 切换列选择区域的展开/折叠
@@ -969,6 +1023,12 @@
         function updateColumnSelection() {
             const checkboxes = document.querySelectorAll('#columnCheckboxes input[type="checkbox"]:checked');
             selectedColumns = [];
+            
+            // 如果用户手动选择了模型，自动关闭自动模式
+            if (checkboxes.length > 0) {
+                autoMode = false;
+                document.getElementById('autoMode').checked = false;
+            }
             
             if (excelData && excelData.length > 0) {
                 const headers = excelData[0];
@@ -1320,8 +1380,8 @@
         function updateComparisonGrid() {
             const grid = document.getElementById('comparisonGrid');
             
-            if (!excelData || selectedColumns.length === 0) {
-                // 没有Excel数据或没有选择列时，显示俏皮的提示
+            if (!excelData) {
+                // 没有Excel数据时，显示俏皮的提示
                 grid.innerHTML = `
                     <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--muted);">
                         <div style="font-size: 64px; margin-bottom: 20px;">🔍</div>
@@ -1335,10 +1395,52 @@
             }
             
             const currentRow = excelData[currentQueryIndex + 1];
+            const headers = excelData[0];
+            let columnsToShow = [];
+            
+            if (autoMode) {
+                // 自动模式：只显示有内容的模型
+                const modelNames = ['Deepseek', 'ChatGPT', '点点', 'Kimi', '豆包', 'Gemini', '问一问', 'Grok', '元宝'];
+                
+                modelNames.forEach(modelName => {
+                    const columnIndex = headers.findIndex(header => 
+                        header && header.trim() === modelName
+                    );
+                    
+                    if (columnIndex !== -1) {
+                        const content = currentRow[columnIndex] || '';
+                        // 只有当内容不为空时才显示
+                        if (content.trim()) {
+                            columnsToShow.push({
+                                index: columnIndex,
+                                name: modelName
+                            });
+                        }
+                    }
+                });
+            } else {
+                // 手动模式：显示用户选择的模型
+                columnsToShow = selectedColumns;
+            }
+            
+            if (columnsToShow.length === 0) {
+                // 没有要显示的列时，显示提示
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--muted);">
+                        <div style="font-size: 64px; margin-bottom: 20px;">📝</div>
+                        <div style="font-size: 18px; margin-bottom: 12px; font-weight: 500;">当前查询没有模型回复</div>
+                        <div style="font-size: 14px; margin-bottom: 8px;">试试切换到其他查询，或者手动选择模型</div>
+                        <div style="font-size: 12px; color: #9ca3af;">💡 提示：可以关闭「仅展示有回复的模型」来查看所有模型</div>
+                    </div>
+                `;
+                grid.style.gridTemplateColumns = '1fr';
+                return;
+            }
+            
             grid.innerHTML = '';
             
             // 设置网格列数 - 平铺撑满整页，确保列平均分配
-            grid.style.gridTemplateColumns = `repeat(${selectedColumns.length}, minmax(0, 1fr))`;
+            grid.style.gridTemplateColumns = `repeat(${columnsToShow.length}, minmax(0, 1fr))`;
             grid.style.width = '100%';
             grid.style.display = 'grid';
             
@@ -1346,7 +1448,7 @@
             const badges = [];
             const counts = [];
 
-            selectedColumns.forEach((column, index) => {
+            columnsToShow.forEach((column, index) => {
                 const columnDiv = document.createElement('div');
                 columnDiv.className = 'comparison-column';
                 columnDiv.draggable = true;
