@@ -580,8 +580,8 @@
             transition: var(--transition);
             display: flex;
             flex-direction: column;
-            cursor: grab;
             position: relative;
+            user-select: text;
         }
 
         .comparison-column:hover {
@@ -593,6 +593,7 @@
             opacity: 0.7;
             transform: rotate(2deg);
             z-index: 1000;
+            user-select: none;
         }
 
         .comparison-column.drag-over {
@@ -1478,7 +1479,6 @@
             columnsToShow.forEach((column, index) => {
                 const columnDiv = document.createElement('div');
                 columnDiv.className = 'comparison-column';
-                columnDiv.draggable = true;
                 columnDiv.dataset.columnIndex = index;
                 
                 // 添加拖拽手柄
@@ -1486,7 +1486,7 @@
                 dragHandle.className = 'drag-handle';
                 dragHandle.innerHTML = '⋮⋮';
                 dragHandle.title = '拖拽重新排序';
-                dragHandle.setAttribute('draggable', 'false'); // 防止手柄本身被拖拽
+                dragHandle.style.cursor = 'grab';
                 
                 // 字数徽标（渲染后字数）
                 const countBadge = document.createElement('div');
@@ -1538,8 +1538,28 @@
             let draggedElement = null;
             
             columns.forEach(column => {
+                const dragHandle = column.querySelector('.drag-handle');
+                if (!dragHandle) return;
+                
+                // 拖拽手柄按下时，使整个列可拖拽
+                dragHandle.addEventListener('mousedown', function(e) {
+                    column.draggable = true;
+                    dragHandle.style.cursor = 'grabbing';
+                });
+                
+                // 拖拽手柄释放时，取消列的可拖拽状态
+                dragHandle.addEventListener('mouseup', function(e) {
+                    column.draggable = false;
+                    dragHandle.style.cursor = 'grab';
+                });
+                
                 // 拖拽开始
                 column.addEventListener('dragstart', function(e) {
+                    // 只在通过拖拽手柄拖拽时才允许
+                    if (!column.draggable) {
+                        e.preventDefault();
+                        return;
+                    }
                     draggedElement = this;
                     this.classList.add('dragging');
                     e.dataTransfer.effectAllowed = 'move';
@@ -1549,6 +1569,10 @@
                 // 拖拽结束
                 column.addEventListener('dragend', function(e) {
                     this.classList.remove('dragging');
+                    this.draggable = false;
+                    if (dragHandle) {
+                        dragHandle.style.cursor = 'grab';
+                    }
                     // 移除所有拖拽悬停效果
                     document.querySelectorAll('.comparison-column').forEach(col => {
                         col.classList.remove('drag-over');
