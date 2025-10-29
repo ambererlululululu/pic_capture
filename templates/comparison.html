@@ -415,9 +415,10 @@
         }
 
         .column-checkboxes {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: flex;
+            flex-wrap: wrap;
             gap: var(--space-4);
+            align-items: center;
         }
 
         .column-checkbox {
@@ -438,6 +439,18 @@
             height: 16px;
             cursor: pointer;
             accent-color: var(--brand);
+            outline: none;
+            border: 1px solid var(--border);
+        }
+
+        .column-checkbox input[type="checkbox"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+
+        .column-checkbox input[type="checkbox"]:checked {
+            background: var(--brand);
+            border-color: var(--brand);
         }
 
         .column-checkbox label {
@@ -498,7 +511,7 @@
         .drag-handle {
             position: absolute;
             top: var(--space-2);
-            right: var(--space-2);
+            left: var(--space-2);
             width: 24px;
             height: 24px;
             background: var(--hover);
@@ -513,6 +526,8 @@
             color: var(--muted);
             border: 1px solid var(--border);
             user-select: none;
+            right: auto;
+            z-index: 1000;
         }
 
         .comparison-column:hover .drag-handle {
@@ -533,7 +548,7 @@
         .char-count-badge {
             position: absolute;
             top: var(--space-2);
-            left: var(--space-2);
+            right: var(--space-2);
             padding: 4px 8px;
             border-radius: var(--radius-sm);
             background: var(--brand);
@@ -543,8 +558,13 @@
             font-weight: 500;
             line-height: 1;
             user-select: none;
-            z-index: 10;
+            z-index: 1001;
             box-shadow: var(--elev-1);
+        }
+
+        .char-count-badge.char-count-badge--max {
+            background: #ef4444; /* red-500 */
+            border-color: #ef4444;
         }
 
         .column-header {
@@ -1228,6 +1248,10 @@
             grid.style.width = '100%';
             grid.style.display = 'grid';
             
+            // 用于记录最大字数
+            const badges = [];
+            const counts = [];
+
             selectedColumns.forEach((column, index) => {
                 const columnDiv = document.createElement('div');
                 columnDiv.className = 'comparison-column';
@@ -1257,22 +1281,32 @@
                 contentDiv.innerHTML = renderMarkdown(content);
 
                 // 统计渲染后的字数（纯文本长度）
-                // 使用 setTimeout 确保 DOM 更新完成后再统计
-                setTimeout(() => {
-                    const plainText = contentDiv.textContent || '';
-                    const charCount = plainText.trim().length;
-                    countBadge.textContent = charCount.toString();
-                }, 0);
+                const plainText = contentDiv.textContent || '';
+                const charCount = plainText.trim().length;
+                countBadge.textContent = charCount.toString();
                 
                 columnDiv.appendChild(countBadge);
                 columnDiv.appendChild(dragHandle);
                 columnDiv.appendChild(headerDiv);
                 columnDiv.appendChild(contentDiv);
                 grid.appendChild(columnDiv);
+
+                // 收集徽标与计数，稍后统一标记最大值
+                badges.push(countBadge);
+                counts.push(charCount);
             });
             
             // 添加拖拽事件监听器
             setupDragAndDrop();
+
+            // 标记最大值为红色（并列也高亮）
+            const maxChars = counts.length ? Math.max(...counts) : 0;
+            badges.forEach(b => b.classList.remove('char-count-badge--max'));
+            badges.forEach((badge, i) => {
+                if (counts[i] === maxChars && maxChars > 0) {
+                    badge.classList.add('char-count-badge--max');
+                }
+            });
         }
 
         // 设置拖拽排序功能
