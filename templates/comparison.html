@@ -395,7 +395,6 @@
         .column-selection {
             background: var(--surface);
             border-radius: var(--radius-lg);
-            padding: var(--space-6);
             margin-bottom: var(--space-6);
             box-shadow: var(--elev-2);
             backdrop-filter: blur(10px);
@@ -405,6 +404,14 @@
 
         .column-selection:hover {
             box-shadow: var(--elev-3);
+        }
+
+        .column-selection.collapsed {
+            padding: var(--space-3) var(--space-4);
+        }
+
+        .column-selection.expanded {
+            padding: var(--space-6);
         }
 
         .column-selection h3 {
@@ -419,7 +426,7 @@
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
-            padding: var(--space-4);
+            padding: 0;
             border-radius: var(--radius-lg);
             transition: var(--transition);
             user-select: none;
@@ -427,11 +434,13 @@
 
         .column-selection-header:hover {
             background: var(--hover);
+            padding: var(--space-2);
+            margin: calc(-1 * var(--space-2));
         }
 
         .column-selection-header h3 {
             margin: 0;
-            font-size: var(--fs-20);
+            font-size: var(--fs-18);
             font-weight: 600;
             color: var(--text);
         }
@@ -842,7 +851,7 @@
         <!-- Column Selection -->
         <div class="column-selection" id="columnSelection" style="display: none;">
             <div class="column-selection-header" onclick="toggleColumnSelection()">
-                <h3>选择要对比的列</h3>
+                <h3>模型应用选择</h3>
                 <span class="toggle-icon" id="toggleIcon">▼</span>
             </div>
             <div class="column-selection-content" id="columnSelectionContent" style="display: none;">
@@ -904,13 +913,18 @@
         function toggleColumnSelection() {
             const content = document.getElementById('columnSelectionContent');
             const icon = document.getElementById('toggleIcon');
+            const container = document.getElementById('columnSelection');
             
             if (content.style.display === 'none') {
                 content.style.display = 'block';
                 icon.classList.add('expanded');
+                container.classList.remove('collapsed');
+                container.classList.add('expanded');
             } else {
                 content.style.display = 'none';
                 icon.classList.remove('expanded');
+                container.classList.remove('expanded');
+                container.classList.add('collapsed');
             }
         }
 
@@ -948,6 +962,7 @@
             // 显示列选择区域，但内容默认折叠
             columnSelection.style.display = 'block';
             content.style.display = 'none';
+            columnSelection.classList.add('collapsed');
         }
 
         // 更新列选择
