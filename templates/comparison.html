@@ -414,6 +414,54 @@
             color: var(--text);
         }
 
+        .column-selection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            transition: var(--transition);
+            user-select: none;
+        }
+
+        .column-selection-header:hover {
+            background: var(--hover);
+        }
+
+        .column-selection-header h3 {
+            margin: 0;
+            font-size: var(--fs-20);
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .toggle-icon {
+            font-size: var(--fs-16);
+            color: var(--muted);
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-icon.expanded {
+            transform: rotate(180deg);
+        }
+
+        .column-selection-content {
+            padding: 0 var(--space-4) var(--space-4);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+            to {
+                opacity: 1;
+                max-height: 200px;
+            }
+        }
+
         .column-checkboxes {
             display: flex;
             flex-wrap: wrap;
@@ -793,8 +841,13 @@
 
         <!-- Column Selection -->
         <div class="column-selection" id="columnSelection" style="display: none;">
-            <h3>选择要对比的列</h3>
-            <div class="column-checkboxes" id="columnCheckboxes"></div>
+            <div class="column-selection-header" onclick="toggleColumnSelection()">
+                <h3>选择要对比的列</h3>
+                <span class="toggle-icon" id="toggleIcon">▼</span>
+            </div>
+            <div class="column-selection-content" id="columnSelectionContent" style="display: none;">
+                <div class="column-checkboxes" id="columnCheckboxes"></div>
+            </div>
         </div>
 
         <!-- Comparison Grid -->
@@ -847,10 +900,25 @@
             reader.readAsArrayBuffer(file);
         }
 
+        // 切换列选择区域的展开/折叠
+        function toggleColumnSelection() {
+            const content = document.getElementById('columnSelectionContent');
+            const icon = document.getElementById('toggleIcon');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.classList.add('expanded');
+            } else {
+                content.style.display = 'none';
+                icon.classList.remove('expanded');
+            }
+        }
+
         // 设置列选择
         function setupColumnSelection() {
             const checkboxesContainer = document.getElementById('columnCheckboxes');
             const columnSelection = document.getElementById('columnSelection');
+            const content = document.getElementById('columnSelectionContent');
             
             // 固定显示9个模型选项，不依赖Excel数据
             const modelOptions = [
@@ -877,7 +945,9 @@
                 checkboxesContainer.appendChild(checkboxDiv);
             });
             
+            // 显示列选择区域，但内容默认折叠
             columnSelection.style.display = 'block';
+            content.style.display = 'none';
         }
 
         // 更新列选择
