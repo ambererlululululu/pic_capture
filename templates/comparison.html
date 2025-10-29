@@ -186,6 +186,13 @@
             box-shadow: var(--elev-3);
         }
 
+        .query-display.sticky {
+            position: sticky;
+            top: var(--space-4);
+            z-index: 100;
+            box-shadow: var(--elev-3);
+        }
+
         .query-text {
             font-size: var(--fs-20);
             font-weight: 600;
@@ -1374,7 +1381,27 @@
             // 页面加载时初始化显示框架
             setupColumnSelection();
             updateComparisonGrid();
+            setupStickyQueryDisplay();
         });
+
+        // 设置查询显示区域的粘性定位
+        function setupStickyQueryDisplay() {
+            const queryDisplay = document.getElementById('queryDisplay');
+            if (!queryDisplay) return;
+
+            // 监听滚动事件
+            window.addEventListener('scroll', function() {
+                const queryDisplayRect = queryDisplay.getBoundingClientRect();
+                const headerHeight = 80; // 假设header高度约为80px
+                
+                // 当查询显示区域滚动到距离顶部一定距离时，添加sticky类
+                if (queryDisplayRect.top <= headerHeight + 20) {
+                    queryDisplay.classList.add('sticky');
+                } else {
+                    queryDisplay.classList.remove('sticky');
+                }
+            });
+        }
 
         // 更新对比网格
         function updateComparisonGrid() {
