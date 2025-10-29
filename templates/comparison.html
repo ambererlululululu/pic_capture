@@ -852,36 +852,29 @@
             const checkboxesContainer = document.getElementById('columnCheckboxes');
             const columnSelection = document.getElementById('columnSelection');
             
-            if (!excelData || excelData.length === 0) {
-                // 没有Excel数据时，显示俏皮的提示
-                checkboxesContainer.innerHTML = `
-                    <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
-                        <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
-                        <div style="font-size: 16px; margin-bottom: 8px;">还没有上传Excel文件呢~</div>
-                        <div style="font-size: 14px;">上传后就能看到列选择啦！</div>
-                    </div>
-                `;
-                columnSelection.style.display = 'block';
-                return;
-            }
+            // 固定显示9个模型选项，不依赖Excel数据
+            const modelOptions = [
+                'Deepseek',
+                'ChatGPT', 
+                '点点',
+                'Kimi',
+                '豆包',
+                'Gemini',
+                '问一问',
+                'Grok',
+                '元宝'
+            ];
             
-            const headers = excelData[0];
             checkboxesContainer.innerHTML = '';
             
-            headers.forEach((header, index) => {
-                if (header && header.trim()) {
-                    // 跳过前4列：scene_path, intent_external_key, initial_question, difficulty
-                    // 只显示模型列：Deepseek, ChatGPT, 点点, Kimi, 豆包, Gemini, 问一问, Grok, 元宝
-                    if (index >= 4) {
-                        const checkboxDiv = document.createElement('div');
-                        checkboxDiv.className = 'column-checkbox';
-                        checkboxDiv.innerHTML = `
-                            <input type="checkbox" id="col_${index}" value="${index}" onchange="updateColumnSelection()">
-                            <label for="col_${index}">${header}</label>
-                        `;
-                        checkboxesContainer.appendChild(checkboxDiv);
-                    }
-                }
+            modelOptions.forEach((modelName, index) => {
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'column-checkbox';
+                checkboxDiv.innerHTML = `
+                    <input type="checkbox" id="model_${index}" value="${modelName}" onchange="updateColumnSelection()">
+                    <label for="model_${index}">${modelName}</label>
+                `;
+                checkboxesContainer.appendChild(checkboxDiv);
             });
             
             columnSelection.style.display = 'block';
@@ -890,10 +883,26 @@
         // 更新列选择
         function updateColumnSelection() {
             const checkboxes = document.querySelectorAll('#columnCheckboxes input[type="checkbox"]:checked');
-            selectedColumns = Array.from(checkboxes).map(cb => ({
-                index: parseInt(cb.value),
-                name: cb.nextElementSibling.textContent
-            }));
+            selectedColumns = [];
+            
+            if (excelData && excelData.length > 0) {
+                const headers = excelData[0];
+                
+                Array.from(checkboxes).forEach(cb => {
+                    const modelName = cb.value;
+                    // 在Excel表头中查找对应的列索引
+                    const columnIndex = headers.findIndex(header => 
+                        header && header.trim() === modelName
+                    );
+                    
+                    if (columnIndex !== -1) {
+                        selectedColumns.push({
+                            index: columnIndex,
+                            name: modelName
+                        });
+                    }
+                });
+            }
             
             updateComparisonGrid();
         }
