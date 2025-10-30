@@ -980,6 +980,17 @@
                         charCount: charCountData?.length
                     });
                     
+                    // 输出各个sheet的列名，方便调试
+                    if (excelData && excelData[0]) {
+                        console.log('Response 列名:', excelData[0]);
+                    }
+                    if (winRateData && winRateData[0]) {
+                        console.log('胜率 列名:', winRateData[0]);
+                    }
+                    if (charCountData && charCountData[0]) {
+                        console.log('字数统计 列名:', charCountData[0]);
+                    }
+                    
                     if (excelData.length > 0) {
                         setupColumnSelection();
                         showQueryDisplay();
@@ -1454,11 +1465,27 @@
             const headers = charCountData[0];
             const row = charCountData[queryIndex + 1];
             
-            // 查找模型名对应的列
-            const columnIndex = headers.findIndex(h => h === modelName);
-            if (columnIndex === -1) return null;
+            if (!row) return null;
             
-            return row[columnIndex];
+            // 查找模型名对应的列 - 先精确匹配
+            let columnIndex = headers.findIndex(h => h === modelName);
+            
+            // 如果精确匹配失败，尝试宽松匹配（忽略大小写和空格）
+            if (columnIndex === -1) {
+                const normalizedModelName = modelName.toLowerCase().trim();
+                columnIndex = headers.findIndex(h => {
+                    if (!h) return false;
+                    return h.toString().toLowerCase().trim() === normalizedModelName;
+                });
+            }
+            
+            if (columnIndex === -1) {
+                console.warn(`字数统计未找到模型: ${modelName}`, '可用的列:', headers);
+                return null;
+            }
+            
+            const value = row[columnIndex];
+            return value || null;
         }
         
         // 从胜率表获取胜率数据
@@ -1468,11 +1495,27 @@
             const headers = winRateData[0];
             const row = winRateData[queryIndex + 1];
             
-            // 查找模型名对应的列
-            const columnIndex = headers.findIndex(h => h === modelName);
-            if (columnIndex === -1) return null;
+            if (!row) return null;
             
-            return row[columnIndex];
+            // 查找模型名对应的列 - 先精确匹配
+            let columnIndex = headers.findIndex(h => h === modelName);
+            
+            // 如果精确匹配失败，尝试宽松匹配（忽略大小写和空格）
+            if (columnIndex === -1) {
+                const normalizedModelName = modelName.toLowerCase().trim();
+                columnIndex = headers.findIndex(h => {
+                    if (!h) return false;
+                    return h.toString().toLowerCase().trim() === normalizedModelName;
+                });
+            }
+            
+            if (columnIndex === -1) {
+                console.warn(`胜率数据未找到模型: ${modelName}`, '可用的列:', headers);
+                return null;
+            }
+            
+            const value = row[columnIndex];
+            return value || null;
         }
 
         // 更新对比网格
