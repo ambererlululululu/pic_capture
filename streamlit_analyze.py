@@ -336,10 +336,16 @@ def convert_to_tidy_format(char_count_df, win_rate_df):
             if pd.notna(word_count) or pd.notna(win_rate_str):
                 rating = parse_win_rate(win_rate_str)
                 
+                # 安全转换字数为整数
+                try:
+                    word_count_val = int(float(word_count)) if pd.notna(word_count) else None
+                except (ValueError, TypeError):
+                    word_count_val = None  # 如果转换失败，设为None
+                
                 data_list.append({
                     'query': query_id,
                     'model': model,
-                    'word_count': int(word_count) if pd.notna(word_count) else None,
+                    'word_count': word_count_val,
                     'rating': rating
                 })
     
