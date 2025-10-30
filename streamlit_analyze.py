@@ -432,8 +432,11 @@ def create_scatter_plot(df):
     """创建散点图 + 回归线（按模型区分颜色）"""
     valid_df = df.dropna(subset=['word_count', 'rating'])
     
-    # 计算相关系数
-    correlation = valid_df['word_count'].corr(valid_df['rating'])
+    # 计算皮尔逊相关系数（线性相关）
+    pearson_corr = valid_df['word_count'].corr(valid_df['rating'], method='pearson')
+    
+    # 计算斯皮尔曼相关系数（单调相关）
+    spearman_corr = valid_df['word_count'].corr(valid_df['rating'], method='spearman')
     
     # 线性回归
     slope, intercept, r_value, p_value, std_err = stats.linregress(
@@ -494,7 +497,7 @@ def create_scatter_plot(df):
         )
     )
     
-    return fig, correlation
+    return fig, pearson_corr, spearman_corr
 
 def create_box_plot(df):
     """创建箱线图（按字数区间分组）"""
@@ -672,25 +675,53 @@ def main():
         <div class="chart-card-desc">通过散点图和回归线展示两个变量之间的相关性</div>
         """, unsafe_allow_html=True)
         
-        fig_scatter, correlation = create_scatter_plot(tidy_df)
+        fig_scatter, pearson_corr, spearman_corr = create_scatter_plot(tidy_df)
         st.plotly_chart(fig_scatter, use_container_width=True)
         
-        # 相关性洞察
-        corr_strength = '强' if abs(correlation) > 0.7 else ('中等' if abs(correlation) > 0.4 else '弱')
-        corr_direction = '正' if correlation > 0 else '负'
+        # 相关性洞察 - 对比两种系数
+        pearson_strength = '强' if abs(pearson_corr) > 0.7 else ('中等' if abs(pearson_corr) > 0.4 else '弱')
+        spearman_strength = '强' if abs(spearman_corr) > 0.7 else ('中等' if abs(spearman_corr) > 0.4 else '弱')
+        corr_direction = '正' if pearson_corr > 0 else '负'
+        
+        # 判断关系类型
+        diff = abs(spearman_corr - pearson_corr)
+        if diff < 0.1:
+            relationship_type = "接近线性关系"
+            relationship_desc = "两个系数非常接近，说明字数与胜率之间的关系接近线性。"
+        elif spearman_corr > pearson_corr + 0.1:
+            relationship_type = "非线性单调关系"
+            relationship_desc = "斯皮尔曼系数明显高于皮尔逊系数，说明存在非线性但单调的关系（如对数、指数关系）。"
+        else:
+            relationship_type = "复杂非线性关系"
+            relationship_desc = "两个系数差异较大，说明关系较为复杂，可能存在非单调或分段的模式。"
+        
         corr_interpretation = (
-            '这表明字数越多，胜率往往越高。' if correlation > 0.3 else
-            '这表明字数越多，胜率反而越低。' if correlation < -0.3 else
+            '这表明字数越多，胜率往往越高。' if pearson_corr > 0.3 else
+            '这表明字数越多，胜率反而越低。' if pearson_corr < -0.3 else
             '字数与胜率之间的关系不明显。'
         )
         
         st.markdown(f"""
         <div class="insight">
-            <div class="insight-title">📈 相关性分析</div>
+            <div class="insight-title">📊 双重相关性分析</div>
             <div class="insight-text">
-                字数与胜率的相关系数为 <strong>{correlation:.3f}</strong>。
-                存在<strong>{corr_strength}</strong>{corr_direction}相关关系。
-                {corr_interpretation}
+                <p style="margin-bottom: 12px;">
+                    <strong>皮尔逊相关系数 (Pearson)：</strong>{pearson_corr:.3f} 
+                    <span style="color: #6b7280;">（衡量线性相关性）</span><br>
+                    存在<strong>{pearson_strength}</strong>{corr_direction}相关关系。
+                </p>
+                <p style="margin-bottom: 12px;">
+                    <strong>斯皮尔曼相关系数 (Spearman)：</strong>{spearman_corr:.3f}
+                    <span style="color: #6b7280;">（衡量单调相关性）</span><br>
+                    存在<strong>{spearman_strength}</strong>{corr_direction}相关关系。
+                </p>
+                <p style="margin-bottom: 12px;">
+                    <strong>关系类型判断：</strong>{relationship_type}<br>
+                    <span style="color: #6b7280;">{relationship_desc}</span>
+                </p>
+                <p>
+                    <strong>结论：</strong>{corr_interpretation}
+                </p>
             </div>
         </div>
         """, unsafe_allow_html=True)
