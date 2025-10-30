@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from scipy import stats
 
 # ========== 页面配置 ==========
@@ -533,86 +532,7 @@ def create_box_plot(df):
     
     return fig
 
-def create_heatmap(df):
-    """创建相关性热力图"""
-    valid_df = df.dropna(subset=['word_count', 'rating'])
     
-    # 计算相关性矩阵
-    corr_matrix = valid_df[['word_count', 'rating']].corr()
-    
-    fig = go.Figure(data=go.Heatmap(
-        z=corr_matrix.values,
-        x=['字数', '胜率'],
-        y=['字数', '胜率'],
-        colorscale='RdBu',
-        zmid=0,
-        text=corr_matrix.values.round(3),
-        texttemplate='%{text}',
-        textfont={"size": 18}
-    ))
-    
-    fig.update_layout(
-        paper_bgcolor='white',
-        font=dict(family='-apple-system, BlinkMacSystemFont, "Segoe UI"'),
-        height=400,
-        margin=dict(t=10, b=10, l=10, r=10)
-    )
-    
-    return fig
-
-def create_model_comparison(df):
-    """创建模型对比图"""
-    valid_df = df.dropna(subset=['word_count', 'rating'])
-    
-    # 按模型分组统计
-    model_stats = valid_df.groupby('model').agg({
-        'word_count': 'mean',
-        'rating': 'mean'
-    }).reset_index()
-    
-    # 创建双Y轴图表
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    
-    fig.add_trace(
-        go.Bar(
-            x=model_stats['model'],
-            y=model_stats['word_count'],
-            name='平均字数',
-            marker_color='#6366f1'
-        ),
-        secondary_y=False
-    )
-    
-    fig.add_trace(
-        go.Bar(
-            x=model_stats['model'],
-            y=model_stats['rating'],
-            name='平均胜率',
-            marker_color='#ec4899'
-        ),
-        secondary_y=True
-    )
-    
-    fig.update_xaxes(title_text="模型")
-    fig.update_yaxes(title_text="平均字数", secondary_y=False)
-    fig.update_yaxes(title_text="平均胜率 (%)", secondary_y=True)
-    
-    fig.update_layout(
-        plot_bgcolor='#fafafa',
-        paper_bgcolor='white',
-        font=dict(family='-apple-system, BlinkMacSystemFont, "Segoe UI"'),
-        height=450,
-        barmode='group',
-        margin=dict(t=10, b=10, l=10, r=10)
-    )
-    
-    # 找出最佳模型
-    best_model = model_stats.loc[model_stats['rating'].idxmax(), 'model']
-    best_rating = model_stats['rating'].max()
-    most_verbose = model_stats.loc[model_stats['word_count'].idxmax(), 'model']
-    max_words = model_stats['word_count'].max()
-    
-    return fig, best_model, best_rating, most_verbose, max_words
 
 # ========== 主应用 ==========
 def main():
@@ -752,46 +672,7 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # 热力图
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown("""
-        <div class="chart-card-title">🔥 变量相关性热力图</div>
-        <div class="chart-card-desc">通过颜色深浅展示变量之间的相关性强度</div>
-        """, unsafe_allow_html=True)
-        
-        fig_heatmap = create_heatmap(tidy_df)
-        st.plotly_chart(fig_heatmap, use_container_width=True)
-        
-        st.markdown("""
-        <div class="insight">
-            <div class="insight-title">🔥 相关性矩阵</div>
-            <div class="insight-text">
-                热力图显示了变量之间的相关性强度。颜色越红表示正相关越强，越蓝表示负相关越强。
-                对角线为1表示变量与自身完全相关。
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 模型对比
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown("""
-        <div class="chart-card-title">🏆 不同模型的平均表现对比</div>
-        <div class="chart-card-desc">对比各模型的平均字数和平均胜率</div>
-        """, unsafe_allow_html=True)
-        
-        fig_comparison, best_model, best_rating, most_verbose, max_words = create_model_comparison(tidy_df)
-        st.plotly_chart(fig_comparison, use_container_width=True)
-        
-        st.markdown(f"""
-        <div class="insight">
-            <div class="insight-title">🏆 模型表现</div>
-            <div class="insight-text">
-                <strong>{best_model}</strong> 的平均胜率最高（{best_rating:.2f}%），
-                <strong>{most_verbose}</strong> 的平均字数最多（{max_words:.0f}字）。
-                {'最佳模型同时也是最详细的模型。' if best_model == most_verbose else ''}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # 按需求移除：热力图与模型对比柱状图
         
     except Exception as e:
         st.error(f"❌ 处理文件时出错：{str(e)}")
