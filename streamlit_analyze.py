@@ -602,37 +602,45 @@ def main():
                 # 读取所选sheet
                 char_count_df = pd.read_excel(excel_file, sheet_name=sel_char_sheet)
                 win_rate_df = None if sel_rate_sheet == '<无>' else pd.read_excel(excel_file, sheet_name=sel_rate_sheet)
-                    with st.spinner('正在处理数据...'):
-                        tidy_df = convert_to_tidy_format(char_count_df, win_rate_df if win_rate_df is not None else pd.DataFrame(columns=char_count_df.columns))
-                    if not tidy_df['rating'].notna().any():
-                        st.warning('未提供“胜率”sheet，以下仅展示字数相关统计与分布。')
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    display_stats_cards(tidy_df)
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if tidy_df['rating'].notna().any():
-                        st.markdown("""
-                        <div class=\"chart-card-title\">📈 字数与胜率关系分析</div>
-                        <div class=\"chart-card-desc\">散点+回归线，按模型着色</div>
-                        """, unsafe_allow_html=True)
-                    if tidy_df['rating'].notna().any():
-                        fig_scatter, pearson_corr, spearman_corr = create_scatter_plot(tidy_df)
-                        st.plotly_chart(fig_scatter, use_container_width=True)
-                    else:
-                        st.info('未选择“胜率”sheet，相关性散点图暂不可用。')
-                        st.markdown("<br><br>", unsafe_allow_html=True)
-                        st.markdown("""
-                        <div class=\"chart-card-title\">📦 按字数区间的胜率分布</div>
-                        """, unsafe_allow_html=True)
-                    if tidy_df['rating'].notna().any():
-                        fig_box = create_box_plot(tidy_df)
-                        st.plotly_chart(fig_box, use_container_width=True)
-                    else:
-                        # 仅字数直方图
-                        import plotly.express as px
-                        wc = tidy_df['word_count'].dropna()
-                        if not wc.empty:
-                            fig_wc = px.histogram(wc, nbins=40, title='字数分布（无胜率数据）')
-                            st.plotly_chart(fig_wc, use_container_width=True)
+
+                with st.spinner('正在处理数据...'):
+                    tidy_df = convert_to_tidy_format(
+                        char_count_df,
+                        win_rate_df if win_rate_df is not None else pd.DataFrame(columns=char_count_df.columns)
+                    )
+
+                if not tidy_df['rating'].notna().any():
+                    st.warning('未提供“胜率”sheet，以下仅展示字数相关统计与分布。')
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                display_stats_cards(tidy_df)
+                st.markdown("<br>", unsafe_allow_html=True)
+
+                if tidy_df['rating'].notna().any():
+                    st.markdown("""
+                    <div class=\"chart-card-title\">📈 字数与胜率关系分析</div>
+                    <div class=\"chart-card-desc\">散点+回归线，按模型着色</div>
+                    """, unsafe_allow_html=True)
+                    fig_scatter, pearson_corr, spearman_corr = create_scatter_plot(tidy_df)
+                    st.plotly_chart(fig_scatter, use_container_width=True)
+                else:
+                    st.info('未选择“胜率”sheet，相关性散点图暂不可用。')
+
+                st.markdown("<br><br>", unsafe_allow_html=True)
+                st.markdown("""
+                <div class=\"chart-card-title\">📦 按字数区间的胜率分布</div>
+                """, unsafe_allow_html=True)
+
+                if tidy_df['rating'].notna().any():
+                    fig_box = create_box_plot(tidy_df)
+                    st.plotly_chart(fig_box, use_container_width=True)
+                else:
+                    # 仅字数直方图
+                    import plotly.express as px
+                    wc = tidy_df['word_count'].dropna()
+                    if not wc.empty:
+                        fig_wc = px.histogram(wc, nbins=40, title='字数分布（无胜率数据）')
+                        st.plotly_chart(fig_wc, use_container_width=True)
             except Exception as e:
                 st.error(f"❌ 处理Excel出错：{str(e)}")
                 st.exception(e)
