@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据分析 - Query评分与字数关系</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .upload-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .file-input-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-name {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 30px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .chart-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-section h2 {
+            color: #667eea;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+        }
+
+        .insight {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .insight-title {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .insight-text {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Query评分与字数关系分析</h1>
+            <p style="color: #666; margin-bottom: 20px;">上传包含"字数统计"和"胜率"两个sheet的Excel文件，系统将自动进行数据分析和可视化</p>
+            
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="excelFile" class="file-input" accept=".xlsx,.xls" />
+                    <button class="file-input-button" onclick="document.getElementById('excelFile').click()">
+                        📁 选择Excel文件
+                    </button>
+                </div>
+                <span id="fileName" class="file-name">未选择文件</span>
+            </div>
+        </div>
+
+        <div id="error" class="error"></div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>正在分析数据，请稍候...</p>
+        </div>
+
+        <div id="results" class="results">
+            <!-- 基础统计 -->
+            <div class="stats-grid" id="statsGrid"></div>
+
+            <!-- 图表区域 -->
+            <div class="chart-section">
+                <h2>字数与胜率关系分析</h2>
+                <div id="scatterPlot" class="chart-container"></div>
+                <div class="insight" id="correlationInsight"></div>
+            </div>
+
+            <div class="chart-section">
+                <h2>按字数区间的胜率分布</h2>
+                <div id="boxPlot" class="chart-container"></div>
+                <div class="insight" id="distributionInsight"></div>
+            </div>
+
+            <div class="chart-section">
+                <h2>变量相关性热力图</h2>
+                <div id="heatmap" class="chart-container"></div>
+                <div class="insight" id="heatmapInsight"></div>
+            </div>
+
+            <div class="chart-section">
+                <h2>不同模型的平均表现对比</h2>
+                <div id="modelComparison" class="chart-container"></div>
+                <div class="insight" id="modelInsight"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script>
+        document.getElementById('excelFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = file.name;
+                loadAndAnalyze(file);
+            }
+        });
+
+        async function loadAndAnalyze(file) {
+            // 显示加载状态
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('error').classList.remove('active');
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // 读取字数统计和胜率sheet
+                const charCountSheet = workbook.Sheets['字数统计'];
+                const winRateSheet = workbook.Sheets['胜率'];
+
+                if (!charCountSheet || !winRateSheet) {
+                    throw new Error('Excel文件必须包含"字数统计"和"胜率"两个sheet');
+                }
+
+                const charCountData = XLSX.utils.sheet_to_json(charCountSheet, { header: 1 });
+                const winRateData = XLSX.utils.sheet_to_json(winRateSheet, { header: 1 });
+
+                // 转换为长格式数据
+                const tidyData = convertToTidyFormat(charCountData, winRateData);
+
+                // 执行分析
+                analyzeData(tidyData);
+
+                // 隐藏加载，显示结果
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('results').classList.add('active');
+
+            } catch (error) {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('error').textContent = '错误：' + error.message;
+                document.getElementById('error').classList.add('active');
+                console.error(error);
+            }
+        }
+
+        function convertToTidyFormat(charCountData, winRateData) {
+            const tidyData = [];
+            
+            // 获取列名（模型名）
+            const charHeaders = charCountData[0];
+            const winHeaders = winRateData[0];
+
+            // 从第二行开始处理数据
+            for (let i = 1; i < Math.max(charCountData.length, winRateData.length); i++) {
+                const charRow = charCountData[i] || [];
+                const winRow = winRateData[i] || [];
+                
+                const queryId = charRow[0] || winRow[0]; // 第一列是query编号
+
+                // 遍历每个模型
+                for (let j = 1; j < charHeaders.length; j++) {
+                    const model = charHeaders[j];
+                    const wordCount = charRow[j];
+                    const winRateStr = winRow[j];
+
+                    // 只添加有数据的记录
+                    if (wordCount || winRateStr) {
+                        // 解析胜率百分比
+                        let rating = null;
+                        if (winRateStr) {
+                            const match = winRateStr.toString().match(/(\d+\.?\d*)%/);
+                            rating = match ? parseFloat(match[1]) : null;
+                        }
+
+                        tidyData.push({
+                            query: queryId,
+                            model: model,
+                            word_count: wordCount ? parseInt(wordCount) : null,
+                            rating: rating
+                        });
+                    }
+                }
+            }
+
+            return tidyData;
+        }
+
+        function analyzeData(data) {
+            // 过滤掉缺失值
+            const validData = data.filter(d => d.word_count != null && d.rating != null);
+
+            // 基础统计
+            displayBasicStats(validData);
+
+            // 散点图 + 回归线
+            createScatterPlot(validData);
+
+            // 箱线图（按字数分档）
+            createBoxPlot(validData);
+
+            // 相关性热力图
+            createHeatmap(validData);
+
+            // 模型对比
+            createModelComparison(validData);
+        }
+
+        function displayBasicStats(data) {
+            const wordCounts = data.map(d => d.word_count);
+            const ratings = data.map(d => d.rating);
+
+            const stats = {
+                '字数统计': {
+                    '均值': mean(wordCounts).toFixed(2),
+                    '中位数': median(wordCounts).toFixed(2),
+                    '标准差': std(wordCounts).toFixed(2),
+                    '最小值': Math.min(...wordCounts),
+                    '最大值': Math.max(...wordCounts)
+                },
+                '胜率统计': {
+                    '均值': mean(ratings).toFixed(2) + '%',
+                    '中位数': median(ratings).toFixed(2) + '%',
+                    '标准差': std(ratings).toFixed(2) + '%',
+                    '最小值': Math.min(...ratings).toFixed(2) + '%',
+                    '最大值': Math.max(...ratings).toFixed(2) + '%'
+                },
+                '数据概览': {
+                    '总样本数': data.length,
+                    '模型数量': new Set(data.map(d => d.model)).size,
+                    'Query数量': new Set(data.map(d => d.query)).size
+                }
+            };
+
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = '';
+
+            Object.entries(stats).forEach(([title, items]) => {
+                const card = document.createElement('div');
+                card.className = 'stat-card';
+                card.innerHTML = `
+                    <h3>${title}</h3>
+                    ${Object.entries(items).map(([label, value]) => `
+                        <div class="stat-item">
+                            <span class="stat-label">${label}</span>
+                            <span class="stat-value">${value}</span>
+                        </div>
+                    `).join('')}
+                `;
+                statsGrid.appendChild(card);
+            });
+        }
+
+        function createScatterPlot(data) {
+            const trace = {
+                x: data.map(d => d.word_count),
+                y: data.map(d => d.rating),
+                mode: 'markers',
+                type: 'scatter',
+                name: '数据点',
+                marker: {
+                    size: 8,
+                    color: data.map(d => d.rating),
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    colorbar: {
+                        title: '胜率%'
+                    }
+                },
+                text: data.map(d => `模型: ${d.model}<br>字数: ${d.word_count}<br>胜率: ${d.rating}%`),
+                hovertemplate: '%{text}<extra></extra>'
+            };
+
+            // 计算回归线
+            const regression = calculateRegression(
+                data.map(d => d.word_count),
+                data.map(d => d.rating)
+            );
+
+            const regressionTrace = {
+                x: regression.x,
+                y: regression.y,
+                mode: 'lines',
+                name: '回归线',
+                line: { color: 'red', width: 2 }
+            };
+
+            const layout = {
+                title: '字数与胜率的关系',
+                xaxis: { title: '字数' },
+                yaxis: { title: '胜率 (%)' },
+                hovermode: 'closest'
+            };
+
+            Plotly.newPlot('scatterPlot', [trace, regressionTrace], layout);
+
+            // 显示相关性洞察
+            const correlation = calculateCorrelation(
+                data.map(d => d.word_count),
+                data.map(d => d.rating)
+            );
+
+            document.getElementById('correlationInsight').innerHTML = `
+                <div class="insight-title">📈 相关性分析</div>
+                <div class="insight-text">
+                    字数与胜率的相关系数为 <strong>${correlation.toFixed(3)}</strong>。
+                    ${Math.abs(correlation) > 0.7 ? '存在<strong>强</strong>' : 
+                      Math.abs(correlation) > 0.4 ? '存在<strong>中等</strong>' : 
+                      '存在<strong>弱</strong>'}${correlation > 0 ? '正' : '负'}相关关系。
+                    ${correlation > 0.3 ? '这表明字数越多，胜率往往越高。' : 
+                      correlation < -0.3 ? '这表明字数越多，胜率反而越低。' : 
+                      '字数与胜率之间的关系不明显。'}
+                </div>
+            `;
+        }
+
+        function createBoxPlot(data) {
+            // 将字数分为5档
+            const wordCounts = data.map(d => d.word_count);
+            const min = Math.min(...wordCounts);
+            const max = Math.max(...wordCounts);
+            const interval = (max - min) / 5;
+
+            const bins = [];
+            for (let i = 0; i < 5; i++) {
+                bins.push({
+                    label: `${Math.round(min + i * interval)}-${Math.round(min + (i + 1) * interval)}`,
+                    min: min + i * interval,
+                    max: min + (i + 1) * interval,
+                    data: []
+                });
+            }
+
+            data.forEach(d => {
+                for (let i = 0; i < bins.length; i++) {
+                    if (d.word_count >= bins[i].min && d.word_count < bins[i].max) {
+                        bins[i].data.push(d.rating);
+                        break;
+                    }
+                }
+            });
+
+            const traces = bins.map(bin => ({
+                y: bin.data,
+                type: 'box',
+                name: bin.label,
+                boxmean: 'sd'
+            }));
+
+            const layout = {
+                title: '不同字数区间的胜率分布',
+                xaxis: { title: '字数区间' },
+                yaxis: { title: '胜率 (%)' }
+            };
+
+            Plotly.newPlot('boxPlot', traces, layout);
+
+            document.getElementById('distributionInsight').innerHTML = `
+                <div class="insight-title">📦 分布分析</div>
+                <div class="insight-text">
+                    箱线图展示了不同字数区间的胜率分布情况。箱体表示四分位距（IQR），中间的线表示中位数，
+                    钻石标记表示均值。可以观察到不同字数区间的胜率中位数和离散程度。
+                </div>
+            `;
+        }
+
+        function createHeatmap(data) {
+            // 计算相关性矩阵
+            const wordCounts = data.map(d => d.word_count);
+            const ratings = data.map(d => d.rating);
+
+            const corrMatrix = [
+                [1, calculateCorrelation(wordCounts, ratings)],
+                [calculateCorrelation(ratings, wordCounts), 1]
+            ];
+
+            const trace = {
+                z: corrMatrix,
+                x: ['字数', '胜率'],
+                y: ['字数', '胜率'],
+                type: 'heatmap',
+                colorscale: 'RdBu',
+                zmid: 0,
+                text: corrMatrix.map(row => row.map(val => val.toFixed(3))),
+                texttemplate: '%{text}',
+                textfont: { size: 16 }
+            };
+
+            const layout = {
+                title: '变量相关性热力图',
+                xaxis: { side: 'bottom' },
+                yaxis: { autorange: 'reversed' }
+            };
+
+            Plotly.newPlot('heatmap', [trace], layout);
+
+            document.getElementById('heatmapInsight').innerHTML = `
+                <div class="insight-title">🔥 相关性矩阵</div>
+                <div class="insight-text">
+                    热力图显示了变量之间的相关性强度。颜色越红表示正相关越强，越蓝表示负相关越强。
+                    对角线为1表示变量与自身完全相关。
+                </div>
+            `;
+        }
+
+        function createModelComparison(data) {
+            // 按模型分组统计
+            const modelStats = {};
+            data.forEach(d => {
+                if (!modelStats[d.model]) {
+                    modelStats[d.model] = {
+                        wordCounts: [],
+                        ratings: []
+                    };
+                }
+                modelStats[d.model].wordCounts.push(d.word_count);
+                modelStats[d.model].ratings.push(d.rating);
+            });
+
+            const models = Object.keys(modelStats);
+            const avgWordCounts = models.map(m => mean(modelStats[m].wordCounts));
+            const avgRatings = models.map(m => mean(modelStats[m].ratings));
+
+            const trace1 = {
+                x: models,
+                y: avgWordCounts,
+                name: '平均字数',
+                type: 'bar',
+                marker: { color: '#667eea' }
+            };
+
+            const trace2 = {
+                x: models,
+                y: avgRatings,
+                name: '平均胜率',
+                type: 'bar',
+                yaxis: 'y2',
+                marker: { color: '#f093fb' }
+            };
+
+            const layout = {
+                title: '不同模型的平均表现',
+                xaxis: { title: '模型' },
+                yaxis: { title: '平均字数' },
+                yaxis2: {
+                    title: '平均胜率 (%)',
+                    overlaying: 'y',
+                    side: 'right'
+                },
+                barmode: 'group'
+            };
+
+            Plotly.newPlot('modelComparison', [trace1, trace2], layout);
+
+            // 找出表现最好的模型
+            const bestModel = models[avgRatings.indexOf(Math.max(...avgRatings))];
+            const mostVerbose = models[avgWordCounts.indexOf(Math.max(...avgWordCounts))];
+
+            document.getElementById('modelInsight').innerHTML = `
+                <div class="insight-title">🏆 模型表现</div>
+                <div class="insight-text">
+                    <strong>${bestModel}</strong> 的平均胜率最高（${Math.max(...avgRatings).toFixed(2)}%），
+                    <strong>${mostVerbose}</strong> 的平均字数最多（${Math.max(...avgWordCounts).toFixed(0)}字）。
+                    ${bestModel === mostVerbose ? '最佳模型同时也是最详细的模型。' : ''}
+                </div>
+            `;
+        }
+
+        // 统计函数
+        function mean(arr) {
+            return arr.reduce((a, b) => a + b, 0) / arr.length;
+        }
+
+        function median(arr) {
+            const sorted = [...arr].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+
+        function std(arr) {
+            const avg = mean(arr);
+            const squareDiffs = arr.map(value => Math.pow(value - avg, 2));
+            return Math.sqrt(mean(squareDiffs));
+        }
+
+        function calculateCorrelation(x, y) {
+            const n = x.length;
+            const sumX = x.reduce((a, b) => a + b, 0);
+            const sumY = y.reduce((a, b) => a + b, 0);
+            const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+            const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
+            const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
+
+            const numerator = n * sumXY - sumX * sumY;
+            const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+
+            return numerator / denominator;
+        }
+
+        function calculateRegression(x, y) {
+            const n = x.length;
+            const sumX = x.reduce((a, b) => a + b, 0);
+            const sumY = y.reduce((a, b) => a + b, 0);
+            const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+            const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
+
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            const minX = Math.min(...x);
+            const maxX = Math.max(...x);
+            const regressionX = [minX, maxX];
+            const regressionY = regressionX.map(xi => slope * xi + intercept);
+
+            return { x: regressionX, y: regressionY, slope, intercept };
+        }
+    </script>
+</body>
+</html>
+

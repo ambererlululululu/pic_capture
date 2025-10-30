@@ -1150,6 +1150,12 @@ def comparison():
     return render_template('comparison.html')
 
 
+@app.route('/analyze')
+def analyze():
+    """数据分析页面路由"""
+    return render_template('analyze.html')
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8080)
 
