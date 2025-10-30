@@ -569,7 +569,7 @@
         .comparison-column {
             background: var(--surface);
             border-radius: var(--radius-lg);
-            padding: var(--space-6);
+            padding: 0;
             box-shadow: var(--elev-2);
             min-width: 0;
             overflow-wrap: break-word;
@@ -582,6 +582,8 @@
             flex-direction: column;
             position: relative;
             user-select: text;
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
         .comparison-column:hover {
@@ -642,9 +644,9 @@
             position: sticky;
             top: 0;
             background: var(--surface);
-            margin-bottom: var(--space-4);
-            padding-top: var(--space-2);
-            padding-bottom: var(--space-2);
+            margin-bottom: 0;
+            padding: var(--space-6);
+            padding-bottom: var(--space-4);
             border-bottom: 2px solid var(--border);
             flex-shrink: 0;
             z-index: 10;
@@ -705,7 +707,7 @@
             color: var(--text);
             line-height: var(--lh-1_6);
             flex: 1;
-            overflow-y: auto;
+            padding: 0 var(--space-6) var(--space-6) var(--space-6);
         }
 
         /* ===== 空状态 ===== */
@@ -1640,7 +1642,8 @@
                 countBadge.title = '字数统计';
                 badgesContainer.appendChild(countBadge);
                 
-                // 组装标题容器
+                // 组装标题容器（拖拽手柄放在标题容器内，这样滚动时也会固定）
+                headerContainer.appendChild(dragHandle);
                 headerContainer.appendChild(headerDiv);
                 headerContainer.appendChild(badgesContainer);
                 
@@ -1649,7 +1652,6 @@
                 const content = currentRow[column.index] || '';
                 contentDiv.innerHTML = renderMarkdown(content);
                 
-                columnDiv.appendChild(dragHandle);
                 columnDiv.appendChild(headerContainer);
                 columnDiv.appendChild(contentDiv);
                 grid.appendChild(columnDiv);
