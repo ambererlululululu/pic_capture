@@ -337,8 +337,9 @@ def find_sheet_name(excel_file: pd.ExcelFile, candidates):
                 return v
     return None
 
-def convert_to_tidy_format(char_count_df, win_rate_df):
-    """将宽格式数据转换为长格式（tidy format）"""
+def convert_to_tidy_format(char_count_df, win_rate_df=None):
+    """将宽格式数据转换为长格式（tidy format）\n
+    win_rate_df 允许为 None（仅字数统计场景）。"""
     data_list = []
     
     # 获取模型列（第一列是query编号，从第二列开始是模型）
@@ -349,7 +350,10 @@ def convert_to_tidy_format(char_count_df, win_rate_df):
         
         for model in models:
             word_count = char_count_df.loc[idx, model] if model in char_count_df.columns else None
-            win_rate_str = win_rate_df.loc[idx, model] if idx < len(win_rate_df) and model in win_rate_df.columns else None
+            win_rate_str = None
+            if win_rate_df is not None:
+                if idx < len(win_rate_df) and model in win_rate_df.columns:
+                    win_rate_str = win_rate_df.loc[idx, model]
             
             # 只添加有数据的记录
             if pd.notna(word_count) or pd.notna(win_rate_str):
@@ -372,7 +376,10 @@ def convert_to_tidy_format(char_count_df, win_rate_df):
 
 def display_stats_cards(df):
     """展示统计卡片"""
-    valid_df = df.dropna(subset=['word_count', 'rating'])
+    # 基础：字数
+    wc_series = df['word_count'].dropna()
+    has_rating = df['rating'].notna().any() if 'rating' in df.columns else False
+    valid_df = df.dropna(subset=['word_count', 'rating']) if has_rating else None
     
     col1, col2, col3 = st.columns(3)
     
@@ -382,52 +389,49 @@ def display_stats_cards(df):
             <div class="stat-card-title">📝 字数统计</div>
             <div class="stat-item">
                 <span class="stat-label">均值</span>
-                <span class="stat-value">{valid_df['word_count'].mean():.2f}</span>
+                <span class="stat-value">{wc_series.mean():.2f}</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">中位数</span>
-                <span class="stat-value">{valid_df['word_count'].median():.2f}</span>
+                <span class="stat-value">{wc_series.median():.2f}</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">标准差</span>
-                <span class="stat-value">{valid_df['word_count'].std():.2f}</span>
+                <span class="stat-value">{wc_series.std():.2f}</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">最小值</span>
-                <span class="stat-value">{valid_df['word_count'].min():.0f}</span>
+                <span class="stat-value">{wc_series.min():.0f}</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">最大值</span>
-                <span class="stat-value">{valid_df['word_count'].max():.0f}</span>
+                <span class="stat-value">{wc_series.max():.0f}</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
+        if has_rating:
+            r = df['rating'].dropna()
+            rating_html = f"""
+            <div class=\"stat-card\">
+                <div class=\"stat-card-title\">🎯 胜率统计</div>
+                <div class=\"stat-item\"><span class=\"stat-label\">均值</span><span class=\"stat-value\">{r.mean():.2f}%</span></div>
+                <div class=\"stat-item\"><span class=\"stat-label\">中位数</span><span class=\"stat-value\">{r.median():.2f}%</span></div>
+                <div class=\"stat-item\"><span class=\"stat-label\">标准差</span><span class=\"stat-value\">{r.std():.2f}%</span></div>
+                <div class=\"stat-item\"><span class=\"stat-label\">最小值</span><span class=\"stat-value\">{r.min():.2f}%</span></div>
+                <div class=\"stat-item\"><span class=\"stat-label\">最大值</span><span class=\"stat-value\">{r.max():.2f}%</span></div>
+            </div>
+            """
+        else:
+            rating_html = """
+            <div class=\"stat-card\">
+                <div class=\"stat-card-title\">🎯 胜率统计</div>
+                <div class=\"stat-item\"><span class=\"stat-label\">提示</span><span class=\"stat-value\">未提供“胜率”sheet</span></div>
+            </div>
+            """
         st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-card-title">🎯 胜率统计</div>
-            <div class="stat-item">
-                <span class="stat-label">均值</span>
-                <span class="stat-value">{valid_df['rating'].mean():.2f}%</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">中位数</span>
-                <span class="stat-value">{valid_df['rating'].median():.2f}%</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">标准差</span>
-                <span class="stat-value">{valid_df['rating'].std():.2f}%</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">最小值</span>
-                <span class="stat-value">{valid_df['rating'].min():.2f}%</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">最大值</span>
-                <span class="stat-value">{valid_df['rating'].max():.2f}%</span>
-            </div>
-        </div>
+        {rating_html}
         """, unsafe_allow_html=True)
     
     with col3:
@@ -436,19 +440,19 @@ def display_stats_cards(df):
             <div class="stat-card-title">📊 数据概览</div>
             <div class="stat-item">
                 <span class="stat-label">总样本数</span>
-                <span class="stat-value">{len(valid_df)}</span>
+                <span class="stat-value">{len(df.dropna(subset=['word_count']))}</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">模型数量</span>
-                <span class="stat-value">{valid_df['model'].nunique()}</span>
+                <span class="stat-value">{df['model'].nunique()}</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">Query数量</span>
-                <span class="stat-value">{valid_df['query'].nunique()}</span>
+                <span class="stat-value">{df['query'].nunique()}</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">数据完整率</span>
-                <span class="stat-value">{len(valid_df)/len(df)*100:.1f}%</span>
+                <span class="stat-value">{len(df.dropna(subset=['word_count']))/max(len(df),1)*100:.1f}%</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -589,21 +593,31 @@ def main():
                     win_rate_df = pd.read_excel(excel_file, sheet_name=rate_sheet)
                     with st.spinner('正在处理数据...'):
                         tidy_df = convert_to_tidy_format(char_count_df, win_rate_df)
+                    if not tidy_df['rating'].notna().any():
+                        st.warning('未提供“胜率”sheet，以下仅展示字数相关统计与分布。')
                     st.markdown("<br>", unsafe_allow_html=True)
                     display_stats_cards(tidy_df)
                     st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown("""
-                    <div class=\"chart-card-title\">📈 字数与胜率关系分析</div>
-                    <div class=\"chart-card-desc\">散点+回归线，按模型着色</div>
-                    """, unsafe_allow_html=True)
-                    fig_scatter, pearson_corr, spearman_corr = create_scatter_plot(tidy_df)
-                    st.plotly_chart(fig_scatter, use_container_width=True)
-                    st.markdown("<br><br>", unsafe_allow_html=True)
-                    st.markdown("""
-                    <div class=\"chart-card-title\">📦 按字数区间的胜率分布</div>
-                    """, unsafe_allow_html=True)
-                    fig_box = create_box_plot(tidy_df)
-                    st.plotly_chart(fig_box, use_container_width=True)
+                    if tidy_df['rating'].notna().any():
+                        st.markdown("""
+                        <div class=\"chart-card-title\">📈 字数与胜率关系分析</div>
+                        <div class=\"chart-card-desc\">散点+回归线，按模型着色</div>
+                        """, unsafe_allow_html=True)
+                        fig_scatter, pearson_corr, spearman_corr = create_scatter_plot(tidy_df)
+                        st.plotly_chart(fig_scatter, use_container_width=True)
+                        st.markdown("<br><br>", unsafe_allow_html=True)
+                        st.markdown("""
+                        <div class=\"chart-card-title\">📦 按字数区间的胜率分布</div>
+                        """, unsafe_allow_html=True)
+                        fig_box = create_box_plot(tidy_df)
+                        st.plotly_chart(fig_box, use_container_width=True)
+                    else:
+                        # 仅字数直方图
+                        import plotly.express as px
+                        wc = tidy_df['word_count'].dropna()
+                        if not wc.empty:
+                            fig_wc = px.histogram(wc, nbins=40, title='字数分布（无胜率数据）')
+                            st.plotly_chart(fig_wc, use_container_width=True)
             except Exception as e:
                 st.error(f"❌ 处理Excel出错：{str(e)}")
                 st.exception(e)
