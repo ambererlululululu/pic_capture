@@ -317,6 +317,26 @@ def parse_win_rate(win_rate_str):
     match = re.search(r'(\d+\.?\d*)%', str(win_rate_str))
     return float(match.group(1)) if match else None
 
+def find_sheet_name(excel_file: pd.ExcelFile, candidates):
+    """在Excel文件中查找最匹配的sheet名，容错大小写/空格/全角半角等。
+    返回实际sheet名或None。
+    """
+    import re
+    all_sheets = excel_file.sheet_names
+    norm = lambda s: re.sub(r"\s+", "", str(s)).strip().lower()
+    normalized_map = {norm(name): name for name in all_sheets}
+    for c in candidates:
+        key = norm(c)
+        if key in normalized_map:
+            return normalized_map[key]
+    # 近似匹配：包含关键词
+    for c in candidates:
+        ck = norm(c)
+        for k, v in normalized_map.items():
+            if ck in k or k in ck:
+                return v
+    return None
+
 def convert_to_tidy_format(char_count_df, win_rate_df):
     """将宽格式数据转换为长格式（tidy format）"""
     data_list = []
@@ -559,11 +579,14 @@ def main():
         else:
             try:
                 excel_file = pd.ExcelFile(uploaded_file)
-                if '字数统计' not in excel_file.sheet_names or '胜率' not in excel_file.sheet_names:
-                    st.error('❌ Excel文件必须包含"字数统计"和"胜率"两个sheet')
+                char_sheet = find_sheet_name(excel_file, ['字数统计', '字数', 'count'])
+                rate_sheet = find_sheet_name(excel_file, ['胜率', 'win', '评分'])
+                if not char_sheet or not rate_sheet:
+                    st.error('❌ 未找到所需的sheet。需要："字数统计" 与 "胜率"。')
+                    st.info('当前Excel包含的sheet：' + ', '.join(excel_file.sheet_names))
                 else:
-                    char_count_df = pd.read_excel(excel_file, sheet_name='字数统计')
-                    win_rate_df = pd.read_excel(excel_file, sheet_name='胜率')
+                    char_count_df = pd.read_excel(excel_file, sheet_name=char_sheet)
+                    win_rate_df = pd.read_excel(excel_file, sheet_name=rate_sheet)
                     with st.spinner('正在处理数据...'):
                         tidy_df = convert_to_tidy_format(char_count_df, win_rate_df)
                     st.markdown("<br>", unsafe_allow_html=True)
