@@ -582,8 +582,6 @@
             flex-direction: column;
             position: relative;
             user-select: text;
-            max-height: 80vh;
-            overflow-y: auto;
         }
 
         .comparison-column:hover {
@@ -649,9 +647,14 @@
             padding-bottom: var(--space-4);
             border-bottom: 2px solid var(--border);
             flex-shrink: 0;
-            z-index: 10;
+            z-index: 50;
             backdrop-filter: blur(10px);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* 当查询区域固定时，调整模型标题的top值 */
+        body.query-sticky .column-header-container {
+            top: var(--query-sticky-height, 180px); /* 动态计算的查询区域高度 */
         }
 
         .column-header {
@@ -1461,8 +1464,14 @@
                 // 当查询显示区域滚动到距离顶部一定距离时，添加sticky类
                 if (queryDisplayRect.top <= headerHeight + 20) {
                     queryDisplay.classList.add('sticky');
+                    document.body.classList.add('query-sticky');
+                    
+                    // 动态计算查询区域的实际高度，并更新模型标题的top值
+                    const queryHeight = queryDisplay.offsetHeight;
+                    document.documentElement.style.setProperty('--query-sticky-height', `${queryHeight + 20}px`);
                 } else {
                     queryDisplay.classList.remove('sticky');
+                    document.body.classList.remove('query-sticky');
                 }
             });
         }
