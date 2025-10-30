@@ -583,16 +583,27 @@ def main():
         else:
             try:
                 excel_file = pd.ExcelFile(uploaded_file)
-                char_sheet = find_sheet_name(excel_file, ['字数统计', '字数', 'count'])
-                rate_sheet = find_sheet_name(excel_file, ['胜率', 'win', '评分'])
-                if not char_sheet or not rate_sheet:
-                    st.error('❌ 未找到所需的sheet。需要："字数统计" 与 "胜率"。')
-                    st.info('当前Excel包含的sheet：' + ', '.join(excel_file.sheet_names))
-                else:
-                    char_count_df = pd.read_excel(excel_file, sheet_name=char_sheet)
-                    win_rate_df = pd.read_excel(excel_file, sheet_name=rate_sheet)
+                sheet_names = excel_file.sheet_names
+                # 自动猜测
+                char_guess = find_sheet_name(excel_file, ['字数统计', '字数', 'count']) or (sheet_names[0] if sheet_names else None)
+                rate_guess = find_sheet_name(excel_file, ['胜率', 'win', '评分'])
+
+                st.write('\n')
+                st.markdown('<div class="chart-card-title">选择工作表</div>', unsafe_allow_html=True)
+                col_s1, col_s2 = st.columns(2)
+                with col_s1:
+                    sel_char_sheet = st.selectbox('字数统计 sheet', options=sheet_names, index=sheet_names.index(char_guess) if char_guess in sheet_names else 0, key='sel_char_sheet')
+                with col_s2:
+                    sel_rate_sheet = st.selectbox('胜率 sheet（可选）', options=['<无>'] + sheet_names, index=(['<无>'] + sheet_names).index(rate_guess) if rate_guess in sheet_names else 0, key='sel_rate_sheet')
+
+                if sel_char_sheet == sel_rate_sheet and sel_rate_sheet != '<无>':
+                    st.warning('同一sheet已被选择为两类，请确认。')
+
+                # 读取所选sheet
+                char_count_df = pd.read_excel(excel_file, sheet_name=sel_char_sheet)
+                win_rate_df = None if sel_rate_sheet == '<无>' else pd.read_excel(excel_file, sheet_name=sel_rate_sheet)
                     with st.spinner('正在处理数据...'):
-                        tidy_df = convert_to_tidy_format(char_count_df, win_rate_df)
+                        tidy_df = convert_to_tidy_format(char_count_df, win_rate_df if win_rate_df is not None else pd.DataFrame(columns=char_count_df.columns))
                     if not tidy_df['rating'].notna().any():
                         st.warning('未提供“胜率”sheet，以下仅展示字数相关统计与分布。')
                     st.markdown("<br>", unsafe_allow_html=True)
@@ -603,12 +614,16 @@ def main():
                         <div class=\"chart-card-title\">📈 字数与胜率关系分析</div>
                         <div class=\"chart-card-desc\">散点+回归线，按模型着色</div>
                         """, unsafe_allow_html=True)
+                    if tidy_df['rating'].notna().any():
                         fig_scatter, pearson_corr, spearman_corr = create_scatter_plot(tidy_df)
                         st.plotly_chart(fig_scatter, use_container_width=True)
+                    else:
+                        st.info('未选择“胜率”sheet，相关性散点图暂不可用。')
                         st.markdown("<br><br>", unsafe_allow_html=True)
                         st.markdown("""
                         <div class=\"chart-card-title\">📦 按字数区间的胜率分布</div>
                         """, unsafe_allow_html=True)
+                    if tidy_df['rating'].notna().any():
                         fig_box = create_box_plot(tidy_df)
                         st.plotly_chart(fig_box, use_container_width=True)
                     else:
