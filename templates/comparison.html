@@ -1571,6 +1571,17 @@
             const match = winRateStr.toString().match(/(\d+\.?\d*)%/);
             return match ? parseFloat(match[1]) : null;
         }
+        
+        // 模型名称缩写映射
+        function getDisplayName(modelName) {
+            const nameMap = {
+                'ChatGPT': 'GPT',
+                'Deepseek': 'DS',
+                'deepseek': 'DS',
+                'chatgpt': 'GPT'
+            };
+            return nameMap[modelName] || modelName;
+        }
 
         // 更新对比网格
         function updateComparisonGrid() {
@@ -1662,10 +1673,11 @@
                 const headerContainer = document.createElement('div');
                 headerContainer.className = 'column-header-container';
                 
-                // 模型名称
+                // 模型名称（使用缩写）
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'column-header';
-                headerDiv.textContent = column.name;
+                headerDiv.textContent = getDisplayName(column.name);
+                headerDiv.title = column.name; // 完整名称作为tooltip
                 
                 // 徽标容器（放在模型名下方）
                 const badgesContainer = document.createElement('div');
