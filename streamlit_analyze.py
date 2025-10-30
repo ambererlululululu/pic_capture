@@ -429,7 +429,7 @@ def display_stats_cards(df):
         """, unsafe_allow_html=True)
 
 def create_scatter_plot(df):
-    """创建散点图 + 回归线"""
+    """创建散点图 + 回归线（按模型区分颜色）"""
     valid_df = df.dropna(subset=['word_count', 'rating'])
     
     # 计算相关系数
@@ -441,15 +441,15 @@ def create_scatter_plot(df):
         valid_df['rating']
     )
     
-    # 创建散点图
+    # 创建散点图 - 按模型区分颜色
     fig = px.scatter(
         valid_df,
         x='word_count',
         y='rating',
-        color='rating',
-        color_continuous_scale='Viridis',
-        hover_data=['model', 'query'],
-        labels={'word_count': '字数', 'rating': '胜率 (%)'},
+        color='model',  # 按模型区分颜色
+        hover_data=['query'],
+        labels={'word_count': '字数', 'rating': '胜率 (%)', 'model': '模型'},
+        color_discrete_sequence=px.colors.qualitative.Set2  # 使用柔和的配色
     )
     
     # 添加回归线
@@ -462,8 +462,17 @@ def create_scatter_plot(df):
             y=y_range,
             mode='lines',
             name='回归线',
-            line=dict(color='red', width=3, dash='dash')
+            line=dict(color='#ef4444', width=3, dash='dash'),
+            showlegend=True
         )
+    )
+    
+    fig.update_traces(
+        marker=dict(
+            size=10,
+            line=dict(width=1, color='white')  # 给点加白色边框
+        ),
+        selector=dict(mode='markers')
     )
     
     fig.update_layout(
@@ -471,7 +480,18 @@ def create_scatter_plot(df):
         paper_bgcolor='white',
         font=dict(family='-apple-system, BlinkMacSystemFont, "Segoe UI"'),
         height=450,
-        margin=dict(t=10, b=10, l=10, r=10)
+        margin=dict(t=10, b=10, l=10, r=10),
+        legend=dict(
+            title=dict(text='模型', font=dict(weight='bold')),
+            orientation='v',
+            yanchor='top',
+            y=1,
+            xanchor='left',
+            x=1.02,
+            bgcolor='rgba(255, 255, 255, 0.9)',
+            bordercolor='#e5e7eb',
+            borderwidth=1
+        )
     )
     
     return fig, correlation
