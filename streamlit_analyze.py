@@ -653,7 +653,7 @@ def main():
         
         # 检查必需的sheet
         if '字数统计' not in excel_file.sheet_names or '胜率' not in excel_file.sheet_names:
-            st.error("❌ Excel文件必须包含"字数统计"和"胜率"两个sheet")
+            st.error('❌ Excel文件必须包含"字数统计"和"胜率"两个sheet')
             return
         
         # 读取数据
