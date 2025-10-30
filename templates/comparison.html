@@ -1539,6 +1539,39 @@
             return value || null;
         }
 
+        // 根据数值在最小值和最大值之间的位置，返回渐变色
+        // 最小值->绿色，中间值->黄色/橙色，最大值->红色
+        function getGradientColor(value, minValue, maxValue) {
+            if (minValue === maxValue) return '#3b82f6'; // 如果都一样，返回蓝色
+            
+            // 归一化到 0-1
+            const ratio = (value - minValue) / (maxValue - minValue);
+            
+            let r, g, b;
+            if (ratio < 0.5) {
+                // 绿色 (34, 197, 94) 到 黄色 (234, 179, 8)
+                const localRatio = ratio * 2;
+                r = Math.round(34 + (234 - 34) * localRatio);
+                g = Math.round(197 + (179 - 197) * localRatio);
+                b = Math.round(94 + (8 - 94) * localRatio);
+            } else {
+                // 黄色 (234, 179, 8) 到 红色 (239, 68, 68)
+                const localRatio = (ratio - 0.5) * 2;
+                r = Math.round(234 + (239 - 234) * localRatio);
+                g = Math.round(179 + (68 - 179) * localRatio);
+                b = Math.round(8 + (68 - 8) * localRatio);
+            }
+            
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+        
+        // 解析胜率字符串，提取百分比数值
+        function parseWinRate(winRateStr) {
+            if (!winRateStr) return null;
+            const match = winRateStr.toString().match(/(\d+\.?\d*)%/);
+            return match ? parseFloat(match[1]) : null;
+        }
+
         // 更新对比网格
         function updateComparisonGrid() {
             const grid = document.getElementById('comparisonGrid');
@@ -1607,9 +1640,11 @@
             grid.style.width = '100%';
             grid.style.display = 'grid';
             
-            // 用于记录最大字数
-            const badges = [];
-            const counts = [];
+            // 用于收集数据，稍后统一应用渐变色
+            const charCountBadges = [];
+            const charCounts = [];
+            const winRateBadges = [];
+            const winRateValues = [];
 
             columnsToShow.forEach((column, index) => {
                 const columnDiv = document.createElement('div');
@@ -1638,12 +1673,20 @@
                 
                 // 胜率徽标 - 从胜率表获取
                 const winRate = getWinRate(column.name, currentQueryIndex);
+                let winRateBadge = null;
                 if (winRate) {
-                    const winRateBadge = document.createElement('div');
+                    winRateBadge = document.createElement('div');
                     winRateBadge.className = 'win-rate-badge';
                     winRateBadge.textContent = winRate;
                     winRateBadge.title = '胜率';
                     badgesContainer.appendChild(winRateBadge);
+                    
+                    // 收集胜率数据
+                    const winRateValue = parseWinRate(winRate);
+                    if (winRateValue !== null) {
+                        winRateBadges.push(winRateBadge);
+                        winRateValues.push(winRateValue);
+                    }
                 }
                 
                 // 字数徽标 - 从字数统计表获取
@@ -1653,6 +1696,10 @@
                 countBadge.textContent = charCount ? charCount.toString() : '0';
                 countBadge.title = '字数统计';
                 badgesContainer.appendChild(countBadge);
+                
+                // 收集字数数据
+                charCountBadges.push(countBadge);
+                charCounts.push(charCount || 0);
                 
                 // 组装标题容器（拖拽手柄放在标题容器内，这样滚动时也会固定）
                 headerContainer.appendChild(dragHandle);
@@ -1667,23 +1714,38 @@
                 columnDiv.appendChild(headerContainer);
                 columnDiv.appendChild(contentDiv);
                 grid.appendChild(columnDiv);
-
-                // 收集徽标与计数，稍后统一标记最大值
-                badges.push(countBadge);
-                counts.push(charCount || 0);
             });
             
             // 添加拖拽事件监听器
             setupDragAndDrop();
 
-            // 标记最大值为红色（并列也高亮）
-            const maxChars = counts.length ? Math.max(...counts) : 0;
-            badges.forEach(b => b.classList.remove('char-count-badge--max'));
-            badges.forEach((badge, i) => {
-                if (counts[i] === maxChars && maxChars > 0) {
-                    badge.classList.add('char-count-badge--max');
-                }
-            });
+            // 应用字数渐变色（最小->绿色，最大->红色）
+            if (charCounts.length > 0) {
+                const minChars = Math.min(...charCounts.filter(c => c > 0)); // 排除0
+                const maxChars = Math.max(...charCounts);
+                
+                charCountBadges.forEach((badge, i) => {
+                    const count = charCounts[i];
+                    if (count > 0) {
+                        const color = getGradientColor(count, minChars, maxChars);
+                        badge.style.background = color;
+                        badge.style.borderColor = color;
+                    }
+                });
+            }
+            
+            // 应用胜率渐变色（最低->绿色，最高->红色）
+            if (winRateValues.length > 0) {
+                const minRate = Math.min(...winRateValues);
+                const maxRate = Math.max(...winRateValues);
+                
+                winRateBadges.forEach((badge, i) => {
+                    const rate = winRateValues[i];
+                    const color = getGradientColor(rate, minRate, maxRate);
+                    badge.style.background = color;
+                    badge.style.borderColor = color;
+                });
+            }
         }
 
         // 设置拖拽排序功能
