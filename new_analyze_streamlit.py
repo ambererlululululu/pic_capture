@@ -14,6 +14,39 @@ import json
 
 # 可选：默认 DeepSeek Key（用户告知可写入）
 DS_DEFAULT_KEY = "sk-0eb74a0fb9f8473fab620d579fc12530"
+
+# ========== LLM 流式工具 ==========
+def deepseek_stream_chat(api_key: str, prompt: str):
+    """与 DeepSeek 进行流式对话，逐块返回文本。"""
+    url = "https://api.deepseek.com/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+    }
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.2,
+        "stream": True,
+    }
+    with requests.post(url, headers=headers, json=payload, stream=True, timeout=120) as r:
+        r.raise_for_status()
+        for line in r.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+            if line.startswith("data: "):
+                data = line[len("data: "):].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    obj = json.loads(data)
+                    delta = obj.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                    if delta:
+                        yield delta
+                except Exception:
+                    # 如果解析失败，直接把原行吐出，避免静默失败
+                    yield ""
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -896,6 +929,7 @@ def main():
         # ========== LLM 智能总结（可选） ==========
         if deepseek_key:
             st.markdown("<br>", unsafe_allow_html=True)
+            llm_box = st.container()
             if st.button('🚀 使用 DeepSeek 生成更深入的智能总结'):
                 try:
                     # 组织关键信息供模型参考
@@ -917,27 +951,19 @@ def main():
                         'time_bin': by_bin.round(3).to_dict()
                     }
                     prompt = f"""
-你是数据分析专家。基于以下指标，给出面向产品与研究的洞察、解释与行动建议，分条精炼：
+你是资深数据科学负责人。请将下面“自动统计结果”整合成一份结构化、可执行的《分析与行动建议报告》，输出包含：
+1) 高层摘要（3-6 条）；2) 关键发现（数据证据+解释）；3) 偏差来源与风险；4) 具体行动建议（按优先级排序）；5) 需要的后续实验与数据；6) 附注（口径/注意事项）。
+自动统计结果如下：
 {json.dumps(metrics, ensure_ascii=False)}
-要求：
-1) 用中文输出；2) 解释可能的因果与偏差来源（如位置偏好、极端评测人、题目难度）；
-3) 给出可验证的后续实验建议；4) 指出数据采样或口径上的风险；
-5) 若皮尔逊与斯皮尔曼差异较大，解释可能的非线性或分段效应。
 """
-                    headers = {"Authorization": f"Bearer {deepseek_key}", "Content-Type": "application/json"}
-                    payload = {"model": "deepseek-chat", "messages": [{"role": "user", "content": prompt}], "temperature": 0.2}
-                    resp = requests.post("https://api.deepseek.com/chat/completions", json=payload, headers=headers, timeout=60)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        text = data.get('choices', [{}])[0].get('message', {}).get('content', '')
-                        st.markdown(f"""
-                        <div class="insight">
-                            <div class="insight-title">🤝 DeepSeek 智能总结</div>
-                            <div class="insight-text">{text}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.warning(f"DeepSeek 调用失败：{resp.status_code} {resp.text}")
+                    # 流式输出
+                    placeholder = llm_box.empty()
+                    placeholder.markdown("<div class='insight'><div class='insight-title'>🤝 DeepSeek 智能总结（生成中…）</div><div class='insight-text' id='llm_out'></div></div>", unsafe_allow_html=True)
+                    buf = []
+                    for chunk in deepseek_stream_chat(deepseek_key, prompt):
+                        buf.append(chunk)
+                        safe_html = ("".join(buf)).replace("\n", "<br>")
+                        placeholder.markdown(f"<div class='insight'><div class='insight-title'>🤝 DeepSeek 智能总结</div><div class='insight-text'>{safe_html}</div></div>", unsafe_allow_html=True)
                 except Exception as e:
                     st.warning(f"DeepSeek 生成失败：{str(e)}")
         
