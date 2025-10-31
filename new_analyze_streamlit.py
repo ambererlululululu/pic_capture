@@ -627,13 +627,19 @@ def main():
         fig6.update_layout(plot_bgcolor='#fafafa', paper_bgcolor='white', height=400)
         st.plotly_chart(fig6, use_container_width=True)
         
-        # 相关性分析
-        valid_corr = df2.dropna(subset=['len_diff', 'left_win'])
-        pearson_corr = valid_corr['len_diff'].corr(valid_corr['left_win'], method='pearson')
-        spearman_corr = valid_corr['len_diff'].corr(valid_corr['left_win'], method='spearman')
-        
-        # t检验：均值是否显著>0
-        t_stat, pval_t = stats.ttest_1samp(len_diff_valid, 0)
+        # 业务视角解读：长度影响
+        # 先安全计算一次 logit 系数，避免变量未定义
+        len_diff_coef, len_diff_pval = None, None
+        try:
+            logit_df_local = df2.dropna(subset=['left_win','len_diff','left_application_name','right_application_name']).copy()
+            if not logit_df_local.empty:
+                logit_df_local['left_win'] = logit_df_local['left_win'].astype(int)
+                model_local = smf.logit('left_win ~ len_diff + C(left_application_name) + C(right_application_name)', data=logit_df_local).fit(disp=False)
+                if 'len_diff' in model_local.params.index:
+                    len_diff_coef = float(model_local.params['len_diff'])
+                    len_diff_pval = float(model_local.pvalues['len_diff'])
+        except Exception:
+            pass
         
         sec3_box = st.container()
         sec3_prompt = f"""
