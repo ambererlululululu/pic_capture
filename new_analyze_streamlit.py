@@ -410,10 +410,20 @@ def main():
             st.error(f'❌ 映射后仍缺少必要字段：{", ".join(missing)}')
             st.info(f'当前文件包含的字段：{", ".join(df.columns.tolist())}')
             return
+
+        # 将数值列强制转换为数值，避免对象类型导致统计报错
+        numeric_base_cols = ['left_application_count', 'right_candidate_count', 'time_spent_sec']
+        for col in numeric_base_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
         
         # 派生字段
         with st.spinner('正在处理数据...'):
             df2 = derive_fields(df)
+            # 衍生列也转为数值
+            for col in ['winner_len', 'loser_len', 'len_diff']:
+                if col in df2.columns:
+                    df2[col] = pd.to_numeric(df2[col], errors='coerce')
         
         st.success(f'✅ 数据加载成功！共 {len(df2)} 条记录，{df2["evaluator_id"].nunique()} 个评测人')
         
