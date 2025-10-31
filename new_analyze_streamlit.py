@@ -230,6 +230,73 @@ CSS = """
 st.markdown(CSS, unsafe_allow_html=True)
 
 # ========== 辅助函数 ==========
+def find_column_name(df, candidates, exact_first=True):
+    """容错查找列名，支持大小写、空格、下划线等变体"""
+    available_cols = df.columns.tolist()
+    
+    # 精确匹配（优先级最高）
+    for c in candidates:
+        if c in available_cols:
+            return c
+    
+    if not exact_first:
+        return None
+    
+    # 近似匹配：忽略大小写、空格、下划线
+    import re
+    def normalize(s):
+        return re.sub(r'[_\s]+', '_', str(s).lower().strip())
+    
+    norm_available = {normalize(col): col for col in available_cols}
+    
+    for c in candidates:
+        norm_c = normalize(c)
+        if norm_c in norm_available:
+            return norm_available[norm_c]
+        
+        # 部分匹配：包含关键词
+        for key, val in norm_available.items():
+            if norm_c in key or key in norm_c:
+                return val
+    
+    return None
+
+def map_columns(df):
+    """字段名映射，支持容错匹配"""
+    col_mapping = {}
+    
+    # 字段名候选列表（常见变体）
+    field_map = {
+        'evaluator_id': ['evaluator_id', 'evaluatorid', 'user_id', 'userid', 'evaluator'],
+        'seq_no': ['seq_no', 'seq', 'sequence', 'seqno'],
+        'intent_content': ['intent_content', 'intent', 'query', 'question', 'intentcontent'],
+        'left_candidate_content': ['left_candidate_content', 'left_candidate', 'left_content', 'leftcandidatecontent', 'left_candidatecontent'],
+        'left_application_name': ['left_application_name', 'left_application', 'left_app', 'leftapplicationname', 'leftapp'],
+        'left_application_count': ['left_application_count', 'left_applicationcount', 'left_count', 'left_字数', 'left字数', 'leftapplicationcount'],
+        'right_candidate_content': ['right_candidate_content', 'right_candidate', 'right_content', 'rightcandidatecontent', 'right_candidatecontent'],
+        'right_application_name': ['right_application_name', 'right_application', 'right_app', 'rightapplicationname', 'rightapp'],
+        'right_candidate_count': ['right_candidate_count', 'right_candidatecount', 'right_count', 'right_字数', 'right字数', 'rightcandidatecount'],
+        'time_spent_sec': ['time_spent_sec', 'time_spent', 'timespent', 'time', 'time_spe', 'timespe'],
+        'winner': ['winner', 'win', 'winner_name', 'win_model']
+    }
+    
+    for target, candidates in field_map.items():
+        found = find_column_name(df, candidates)
+        if found:
+            if found != target:
+                col_mapping[found] = target
+        else:
+            # 如果找不到，返回None表示缺失
+            return None, target
+    
+    # 重命名列
+    if col_mapping:
+        df_renamed = df.rename(columns=col_mapping)
+    else:
+        df_renamed = df
+    
+    return df_renamed, None
+
 def derive_fields(df):
     """派生字段"""
     df2 = df.copy()
@@ -321,16 +388,26 @@ def main():
         else:
             df = pd.read_excel(uploaded_file)
         
-        # 检查必需字段
+        # 字段名容错映射
+        df_mapped, missing_field = map_columns(df)
+        
+        if missing_field:
+            st.error(f'❌ 无法找到必需的字段：{missing_field}')
+            st.info(f'当前文件包含的字段：{", ".join(df.columns.tolist())}')
+            st.info('💡 提示：系统会自动尝试匹配字段名变体（大小写、下划线、空格等）')
+            return
+        
+        # 检查映射结果
         required_cols = [
             'evaluator_id', 'seq_no', 'intent_content',
             'left_candidate_content', 'left_application_name', 'left_application_count',
             'right_candidate_content', 'right_application_name', 'right_candidate_count',
             'time_spent_sec', 'winner'
         ]
+        df = df_mapped
         missing = [c for c in required_cols if c not in df.columns]
         if missing:
-            st.error(f'❌ 缺少必要字段：{", ".join(missing)}')
+            st.error(f'❌ 映射后仍缺少必要字段：{", ".join(missing)}')
             st.info(f'当前文件包含的字段：{", ".join(df.columns.tolist())}')
             return
         
