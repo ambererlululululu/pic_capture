@@ -765,9 +765,11 @@ def main():
         <div class="chart-card-desc">分析每个模型在不同任务类型下的胜率</div>
         """, unsafe_allow_html=True)
         
-        intent_model_win = df2.groupby(['intent_content', 'winner']).size().groupby(level=0).apply(
-            lambda s: s / s.sum()
-        ).reset_index(name='win_rate')
+        # 计算每个 intent 下各模型的胜率，避免 reset_index 冲突
+        intent_counts = df2.groupby(['intent_content', 'winner']).size().reset_index(name='cnt')
+        intent_counts['total'] = intent_counts.groupby('intent_content')['cnt'].transform('sum')
+        intent_counts['win_rate'] = intent_counts['cnt'] / intent_counts['total']
+        intent_model_win = intent_counts[['intent_content', 'winner', 'win_rate']]
         
         # 选出Top intent
         top_intents = df2['intent_content'].value_counts().head(10).index
