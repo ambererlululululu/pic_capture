@@ -10,6 +10,10 @@ from statsmodels.stats.proportion import binom_test
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import requests
+import json
+
+# 可选：默认 DeepSeek Key（用户告知可写入）
+DS_DEFAULT_KEY = "sk-0eb74a0fb9f8473fab620d579fc12530"
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -370,7 +374,7 @@ def main():
     # 侧边栏：可选 DeepSeek API Key，用于生成更深入的智能总结
     with st.sidebar:
         st.markdown("**可选：输入 DeepSeek API Key 以生成更深入的智能总结**")
-        deepseek_key = st.text_input("DeepSeek API Key", type="password", placeholder="sk-...")
+        deepseek_key = st.text_input("DeepSeek API Key", type="password", placeholder="sk-...", value=DS_DEFAULT_KEY)
     
     uploaded_file = st.file_uploader(
         "选择文件",
@@ -792,6 +796,39 @@ def main():
         strong_combos = intent_model_win[intent_model_win['win_rate'] > 0.7].sort_values('win_rate', ascending=False)
         if len(strong_combos) > 0:
             st.dataframe(strong_combos.head(20))
+
+        # —— 扩展指标：各模型平均回答长度（综合左右侧） ——
+        left_len = df2[['left_application_name', 'left_application_count']].rename(columns={'left_application_name': 'model', 'left_application_count': 'length'})
+        right_len = df2[['right_application_name', 'right_candidate_count']].rename(columns={'right_application_name': 'model', 'right_candidate_count': 'length'})
+        model_len = pd.concat([left_len, right_len], ignore_index=True)
+        model_len['length'] = pd.to_numeric(model_len['length'], errors='coerce')
+        model_len_stats = model_len.groupby('model')['length'].mean().sort_values(ascending=False)
+
+        # —— 扩展指标：按 intent 的“难度”（赢家熵，越高越难） ——
+        def entropy(s):
+            p = (s / s.sum()).values
+            p = p[p > 0]
+            return float(-(p * np.log2(p)).sum())
+        intent_entropy = df2.groupby('intent_content')['winner'].value_counts().groupby(level=0).apply(entropy).sort_values(ascending=False)
+
+        # —— 扩展指标：强势/弱势模型对 ——
+        pair_rows = []
+        for i, model_a in enumerate(models):
+            for j, model_b in enumerate(models):
+                if i >= j:
+                    continue
+                matches_ab = df2[(df2['left_application_name'] == model_a) & (df2['right_application_name'] == model_b)]
+                wins_a_left = (matches_ab['winner'] == model_a).sum()
+                n_ab_left = len(matches_ab)
+                matches_ba = df2[(df2['left_application_name'] == model_b) & (df2['right_application_name'] == model_a)]
+                wins_a_right = (matches_ba['winner'] == model_a).sum()
+                n_ab_right = len(matches_ba)
+                total_wins = wins_a_left + wins_a_right
+                total_n = n_ab_left + n_ab_right
+                if total_n > 0:
+                    pair_rows.append({'pair': f'{model_a} vs {model_b}', 'a': model_a, 'b': model_b, 'a_win_rate': total_wins/total_n, 'n': total_n})
+        pair_summary = pd.DataFrame(pair_rows).sort_values('a_win_rate', ascending=False)
+        strong_pairs = pair_summary[(pair_summary['n'] >= 20) & ((pair_summary['a_win_rate'] >= 0.65) | (pair_summary['a_win_rate'] <= 0.35))]
         
         # 10. 时间与质量的联合分析（选做）
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -842,6 +879,19 @@ def main():
         </div>
         """
         st.markdown(summary, unsafe_allow_html=True)
+        # 扩展要点（内置文字总结）
+        bullet_html = "<ul>"
+        if len(win_by_model) > 0:
+            bullet_html += f"<li>模型整体胜率排名前1：{str(win_by_model.iloc[0]['winner'])}（{float(win_by_model.iloc[0]['win_rate']):.2%}）</li>"
+        if not model_len_stats.empty:
+            bullet_html += f"<li>平均回答更长的模型：{model_len_stats.index[0]}（{model_len_stats.iloc[0]:.0f}字）</li>"
+        if len(strong_pairs) > 0:
+            sp = strong_pairs.iloc[0]
+            bullet_html += f"<li>显著强势的模型对：{sp['a']} 对 {sp['b']}（样本 {int(sp['n'])}，{sp['a']} 胜率 {float(sp['a_win_rate']):.1%}）</li>"
+        if len(intent_entropy) > 0:
+            bullet_html += f"<li>最“困难”的任务类型（赢家分散度最高）：{intent_entropy.index[0]}</li>"
+        bullet_html += "</ul>"
+        st.markdown(f"<div class='insight'><div class='insight-title'>📌 扩展要点</div><div class='insight-text'>{bullet_html}</div></div>", unsafe_allow_html=True)
 
         # ========== LLM 智能总结（可选） ==========
         if deepseek_key:
@@ -859,11 +909,16 @@ def main():
                         'pearson_corr': float(pearson_corr),
                         'spearman_corr': float(spearman_corr),
                         'len_diff_coef': None if len_diff_coef is None else float(len_diff_coef),
-                        'len_diff_pval': None if len_diff_pval is None else float(len_diff_pval)
+                        'len_diff_pval': None if len_diff_pval is None else float(len_diff_pval),
+                        'top_intents': list(map(str, list(top_intents))),
+                        'strong_pairs_sample': strong_pairs.head(10).to_dict(orient='records'),
+                        'model_avg_length_top': model_len_stats.head(10).round(1).to_dict(),
+                        'intent_entropy_top': intent_entropy.head(10).round(3).to_dict(),
+                        'time_bin': by_bin.round(3).to_dict()
                     }
                     prompt = f"""
 你是数据分析专家。基于以下指标，给出面向产品与研究的洞察、解释与行动建议，分条精炼：
-{metrics}
+{json.dumps(metrics, ensure_ascii=False)}
 要求：
 1) 用中文输出；2) 解释可能的因果与偏差来源（如位置偏好、极端评测人、题目难度）；
 3) 给出可验证的后续实验建议；4) 指出数据采样或口径上的风险；
