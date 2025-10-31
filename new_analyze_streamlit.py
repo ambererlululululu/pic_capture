@@ -5,7 +5,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import stats
-from scipy.stats import binom_test, chi2_contingency
+from scipy.stats import chi2_contingency
+from statsmodels.stats.proportion import binom_test
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import warnings
