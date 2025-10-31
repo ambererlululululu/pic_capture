@@ -11,6 +11,7 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import requests
 import json
+import threading
 
 # 可选：默认 DeepSeek Key（用户告知可写入）
 DS_DEFAULT_KEY = "sk-0eb74a0fb9f8473fab620d579fc12530"
@@ -381,17 +382,21 @@ def derive_fields(df):
     return df2
 
 def render_llm_analysis(container, title: str, prompt: str, api_key: str):
-    """在给定容器下方渲染流式LLM解读。"""
+    """在给定容器下方渲染流式LLM解读（并行线程）。"""
     if not api_key:
         container.info("可在左侧填入 DeepSeek API Key 以生成详细解读")
         return
     placeholder = container.empty()
     placeholder.markdown(f"<div class='insight'><div class='insight-title'>🔍 {title}（生成中…）</div><div class='insight-text'></div></div>", unsafe_allow_html=True)
-    buf = []
-    for chunk in deepseek_stream_chat(api_key, prompt):
-        buf.append(chunk)
-        safe_html = ("".join(buf)).replace("\n", "<br>")
-        placeholder.markdown(f"<div class='insight'><div class='insight-title'>🔍 {title}</div><div class='insight-text'>{safe_html}</div></div>", unsafe_allow_html=True)
+
+    def _worker():
+        buf = []
+        for chunk in deepseek_stream_chat(api_key, prompt):
+            buf.append(chunk)
+            safe_html = ("".join(buf)).replace("\n", "<br>")
+            placeholder.markdown(f"<div class='insight'><div class='insight-title'>🔍 {title}</div><div class='insight-text'>{safe_html}</div></div>", unsafe_allow_html=True)
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 # ========== 主应用 ==========
 def main():
@@ -502,16 +507,17 @@ def main():
         fig1.update_layout(plot_bgcolor='#fafafa', paper_bgcolor='white', height=400)
         st.plotly_chart(fig1, use_container_width=True)
         
-        # 业务视角解读：模型偏好
+        # 业务视角解读：模型偏好（强调数据与方法，不涉及品牌与商业猜测）
         sec1_box = st.container()
         sec1_prompt = f"""
-你是数据科学家兼业务负责人，请对“模型偏好分析”给出深度解读与建议。
+你是数据科学家，请针对“模型偏好分析”做数据驱动的解释与建议。评测用户看不到模型名称，请勿从品牌/商业角度猜测。
 已知：各模型总体胜率（Top项）={win_by_model.head(10).to_dict(orient='records')}。
-请用中文分条说明：
-1) 哪些模型表现稳定/波动；2) 可能的业务原因（品牌认知、任务匹配、回答风格）；
-3) 与字数或意图类型的关系的假设；4) 下一步商业决策（采买、路由、提示词策略、质检）。
+请说明：
+- 显著性与稳定性（需要哪些额外检验/分层）；
+- 可能的统计偏差（样本量、题目分布、评测人差异、位置效应）与改进；
+- 下一步数据与方法（置信区间、Bootstrap、分层/配对分析、贝叶斯估计）。
 """
-        render_llm_analysis(sec1_box, "模型偏好·业务解读", sec1_prompt, deepseek_key)
+        render_llm_analysis(sec1_box, "模型偏好·数据解读", sec1_prompt, deepseek_key)
         
         # 评测人偏好热力图
         pref_matrix = df2.groupby(['evaluator_id', 'winner']).size().unstack(fill_value=0)
@@ -542,7 +548,10 @@ def main():
         """, unsafe_allow_html=True)
         
         left_rate = df2['left_win'].mean()
-        
+        n_total = int(df2['left_win'].notna().sum())
+        k_left = int(df2['left_win'].sum())
+        pval_binom = float(binom_test(k_left, n_total, 0.5, alternative='two-sided')) if n_total>0 else 1.0
+
         fig3 = px.bar(x=['左侧胜出', '右侧胜出'], y=[left_rate, 1-left_rate],
                      title='左/右胜出比例', labels={'x': '', 'y': '比例'},
                      color=['左侧胜出', '右侧胜出'],
@@ -550,16 +559,16 @@ def main():
         fig3.update_layout(plot_bgcolor='#fafafa', paper_bgcolor='white', height=400)
         st.plotly_chart(fig3, use_container_width=True)
         
-        # 业务视角解读：位置偏好
+        # 数据解读：位置偏好（务实、基于数据）
         sec2_box = st.container()
         sec2_prompt = f"""
-你是数据科学家兼业务负责人，请对“位置偏好（左/右）”给出解读：
-整体左胜比例={left_rate:.3f}，二项检验p={pval_binom:.4f}。
-请说明：1) 是否存在显著位置偏好及可能原因（UI、顺序效应）；
-2) 如何在线上AB或采集流程中去偏（随机化、互换顺序、盲评）；
-3) 位置偏好的业务影响（胜率评估、模型预算分配）。
+请对“位置偏好（左/右）”做数据解读：左胜比例={left_rate:.3f}，二项检验p={pval_binom:.4f}。
+要求：
+- 判断显著性与效应大小；
+- 讨论潜在偏差（顺序、显示、题型分布），提出可验证的改进方案（随机化/对称设计/互换顺序/盲评）；
+- 给出进一步统计检验与采集建议。
 """
-        render_llm_analysis(sec2_box, "位置偏好·业务解读", sec2_prompt, deepseek_key)
+        render_llm_analysis(sec2_box, "位置偏好·数据解读", sec2_prompt, deepseek_key)
         
         # 每位评测人左/右偏好分布
         eval_pref = df2.groupby('evaluator_id')['left_win'].mean().reset_index()
@@ -572,9 +581,9 @@ def main():
         st.plotly_chart(fig4, use_container_width=True)
         
         # 二项检验
-        n_total = len(df2.dropna(subset=['left_win']))
-        k_left = int(df2['left_win'].sum())
-        pval_binom = binom_test(k_left, n_total, 0.5, alternative='two-sided')
+        # n_total = len(df2.dropna(subset=['left_win'])) # Moved up
+        # k_left = int(df2['left_win'].sum()) # Moved up
+        # pval_binom = binom_test(k_left, n_total, 0.5, alternative='two-sided') # Moved up
         
         st.markdown(f"""
         <div class="insight">
@@ -625,6 +634,15 @@ def main():
         
         # t检验：均值是否显著>0
         t_stat, pval_t = stats.ttest_1samp(len_diff_valid, 0)
+        
+        sec3_box = st.container()
+        sec3_prompt = f"""
+请对“答案长度影响”做数据解读，避免商业猜测：
+字数差均值={mean_diff:.2f}，中位数={median_diff:.2f}，t检验p={pval_t:.4f}；
+相关性：Pearson={pearson_corr:.3f}，Spearman={spearman_corr:.3f}；logit系数={len_diff_coef}，p={len_diff_pval}。
+请说明：线性/非线性特征、可能的阈值效应、不同意图的分层假设、进一步验证与采集方案。
+"""
+        render_llm_analysis(sec3_box, "长度影响·数据解读", sec3_prompt, deepseek_key)
         
         st.markdown(f"""
         <div class="insight">
@@ -861,13 +879,10 @@ def main():
         # 业务视角解读：清洗效果
         sec8_box = st.container()
         sec8_prompt = f"""
-你是数据科学家兼业务负责人，请对“数据清洗效果”给出解读：
-原始数据：{len(df2)} 条，左边胜率 {orig_left_rate:.3f}。
-清洗后：{len(clean_df)} 条，左边胜率 {clean_left_rate:.3f}。
-过滤了 {len(biased_evals)} 个偏好评测人和 {len(df2) - len(clean_df) - len(biased_evals)} 条过短记录。
-请说明：1) 清洗对模型胜率的影响；2) 清洗对位置偏好的影响；3) 清洗对时长偏好的影响。
+请解读“数据清洗效果”：原始左胜率={orig_left_rate:.3f}，清洗后={clean_left_rate:.3f}。
+说明：清洗策略对估计偏差的影响、残留问题与验证方法、进一步数据规范与质检建议。
 """
-        render_llm_analysis(sec8_box, "清洗效果·业务解读", sec8_prompt, deepseek_key)
+        render_llm_analysis(sec8_box, "数据清洗·数据解读", sec8_prompt, deepseek_key)
         
         # 9. 按Intent分析模型表现
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -895,12 +910,10 @@ def main():
         # 业务视角解读：按Intent分析模型表现
         sec9_box = st.container()
         sec9_prompt = f"""
-你是数据科学家兼业务负责人，请对“按Intent分析模型表现”给出解读：
-已知：Top 10 Intent 下各模型胜率={intent_model_top.to_dict(orient='records')}。
-请说明：1) 哪些任务类型对模型表现影响显著；2) 模型在不同任务类型下的表现差异；
-3) 如何优化模型在特定任务类型上的表现。
+基于“Intent×模型胜率”，请做数据解读：Top Intents={list(map(str, top_intents))}；高胜率组合样例={strong_combos.head(10).to_dict(orient='records')}。
+请说明：分层显著性（样本量要求、置信区间）、意图与长度/位置交互的假设、需要的额外检验与数据。
 """
-        render_llm_analysis(sec9_box, "按Intent分析模型表现·业务解读", sec9_prompt, deepseek_key)
+        render_llm_analysis(sec9_box, "Intent 表现·数据解读", sec9_prompt, deepseek_key)
         
         # 找出胜率>0.7的组合
         strong_combos = intent_model_win[intent_model_win['win_rate'] > 0.7].sort_values('win_rate', ascending=False)
@@ -964,12 +977,10 @@ def main():
         # 业务视角解读：时间与质量的联合分析
         sec10_box = st.container()
         sec10_prompt = f"""
-你是数据科学家兼业务负责人，请对“时间与质量的联合分析”给出解读：
-已知：答题时长 vs 决策稳定性（方差）={eval_stability.to_dict(orient='records')}。
-请说明：1) 答题时长与决策稳定性之间的关系；2) 时长偏好的业务影响；
-3) 如何优化评测流程以提高判断质量。
+请解读“时间与质量的联合分析”：答题时长 vs 决策稳定性（方差）={eval_stability.to_dict(orient='records')}。
+讨论：极短时长样本质量、过滤阈值的依据、敏感性分析设计、线上监控指标。
 """
-        render_llm_analysis(sec10_box, "时间与质量联合分析·业务解读", sec10_prompt, deepseek_key)
+        render_llm_analysis(sec10_box, "时间与质量联合分析·数据解读", sec10_prompt, deepseek_key)
         
         # ========== 总结 ==========
         st.markdown("<br><br>", unsafe_allow_html=True)
