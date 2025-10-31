@@ -9,6 +9,7 @@ from scipy.stats import chi2_contingency
 from statsmodels.stats.proportion import binom_test
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
+import requests
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -365,6 +366,11 @@ def main():
         <p class="upload-card-desc">支持 .csv, .xlsx, .xls 格式。必需字段：evaluator_id, seq_no, intent_content, left_candidate_content, left_application_name, right_candidate_content, right_application_name, time_spent_sec, winner, left_application_count, right_candidate_count</p>
     </div>
     """, unsafe_allow_html=True)
+
+    # 侧边栏：可选 DeepSeek API Key，用于生成更深入的智能总结
+    with st.sidebar:
+        st.markdown("**可选：输入 DeepSeek API Key 以生成更深入的智能总结**")
+        deepseek_key = st.text_input("DeepSeek API Key", type="password", placeholder="sk-...")
     
     uploaded_file = st.file_uploader(
         "选择文件",
@@ -675,8 +681,8 @@ def main():
             fig8.update_layout(height=400)
             st.plotly_chart(fig8, use_container_width=True)
             
-            len_diff_coef = model_logit.params['len_diff']
-            len_diff_pval = model_logit.pvalues['len_diff']
+            len_diff_coef = float(model_logit.params.get('len_diff', float('nan')))
+            len_diff_pval = float(model_logit.pvalues.get('len_diff', float('nan')))
             
             st.markdown(f"""
             <div class="insight">
@@ -689,6 +695,7 @@ def main():
             """, unsafe_allow_html=True)
         except Exception as e:
             st.warning(f'逻辑回归模型拟合失败：{str(e)}')
+            len_diff_coef, len_diff_pval = None, None
         
         # 7. 答题时长的影响分析
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -835,6 +842,49 @@ def main():
         </div>
         """
         st.markdown(summary, unsafe_allow_html=True)
+
+        # ========== LLM 智能总结（可选） ==========
+        if deepseek_key:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button('🚀 使用 DeepSeek 生成更深入的智能总结'):
+                try:
+                    # 组织关键信息供模型参考
+                    metrics = {
+                        'top_model': str(win_by_model.iloc[0]['winner']) if len(win_by_model)>0 else 'N/A',
+                        'top_model_rate': float(win_by_model.iloc[0]['win_rate']) if len(win_by_model)>0 else None,
+                        'left_rate': float(left_rate),
+                        'pval_binom': float(pval_binom),
+                        'len_diff_mean': float(mean_diff),
+                        'len_diff_median': float(median_diff),
+                        'pearson_corr': float(pearson_corr),
+                        'spearman_corr': float(spearman_corr),
+                        'len_diff_coef': None if len_diff_coef is None else float(len_diff_coef),
+                        'len_diff_pval': None if len_diff_pval is None else float(len_diff_pval)
+                    }
+                    prompt = f"""
+你是数据分析专家。基于以下指标，给出面向产品与研究的洞察、解释与行动建议，分条精炼：
+{metrics}
+要求：
+1) 用中文输出；2) 解释可能的因果与偏差来源（如位置偏好、极端评测人、题目难度）；
+3) 给出可验证的后续实验建议；4) 指出数据采样或口径上的风险；
+5) 若皮尔逊与斯皮尔曼差异较大，解释可能的非线性或分段效应。
+"""
+                    headers = {"Authorization": f"Bearer {deepseek_key}", "Content-Type": "application/json"}
+                    payload = {"model": "deepseek-chat", "messages": [{"role": "user", "content": prompt}], "temperature": 0.2}
+                    resp = requests.post("https://api.deepseek.com/chat/completions", json=payload, headers=headers, timeout=60)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        text = data.get('choices', [{}])[0].get('message', {}).get('content', '')
+                        st.markdown(f"""
+                        <div class="insight">
+                            <div class="insight-title">🤝 DeepSeek 智能总结</div>
+                            <div class="insight-text">{text}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.warning(f"DeepSeek 调用失败：{resp.status_code} {resp.text}")
+                except Exception as e:
+                    st.warning(f"DeepSeek 生成失败：{str(e)}")
         
     except Exception as e:
         st.error(f"❌ 处理文件时出错：{str(e)}")
