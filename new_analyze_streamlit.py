@@ -641,10 +641,20 @@ def main():
         except Exception:
             pass
         
+        # 同时确保 t 检验 p 值定义
+        try:
+            len_diff_valid_local = (df2['winner_len'] - df2['loser_len']).dropna()
+            if len_diff_valid_local.shape[0] > 1:
+                _, pval_t = stats.ttest_1samp(len_diff_valid_local, 0)
+            else:
+                pval_t = None
+        except Exception:
+            pval_t = None
+        
         sec3_box = st.container()
         sec3_prompt = f"""
 请对“答案长度影响”做数据解读，避免商业猜测：
-字数差均值={mean_diff:.2f}，中位数={median_diff:.2f}，t检验p={pval_t:.4f}；
+字数差均值={mean_diff:.2f}，中位数={median_diff:.2f}，t检验p={pval_t}；
 相关性：Pearson={pearson_corr:.3f}，Spearman={spearman_corr:.3f}；logit系数={len_diff_coef}，p={len_diff_pval}。
 请说明：线性/非线性特征、可能的阈值效应、不同意图的分层假设、进一步验证与采集方案。
 """
