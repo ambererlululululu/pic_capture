@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
@@ -11,8 +11,14 @@ import time
 import hashlib
 from pathlib import Path
 from datetime import datetime
+from services.data_loader import load_excel_and_compute
 
 app = Flask(__name__)
+app.secret_key = 'dashboard_secret_key_2024'
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+DEFAULT_DATA_PATH = os.path.join(app.config['UPLOAD_FOLDER'], 'latest.xlsx')
 
 # 简单的内存收集器（仅当前进程内有效）
 collected_links = []
@@ -1154,6 +1160,63 @@ def comparison():
 def analyze():
     """数据分析页面路由"""
     return render_template('analyze.html')
+
+
+@app.route('/dashboard')
+def dashboard():
+    """模型对战分析 Dashboard"""
+    try:
+        if os.path.exists(DEFAULT_DATA_PATH):
+            data = load_excel_and_compute(file_path=DEFAULT_DATA_PATH)
+        else:
+            data = {
+                'summary': [],
+                'heatmap': {'models': [], 'matrix': []},
+                'file_info': {'filename': '未上传', 'rows': 0, 'models': 0}
+            }
+        return render_template('dashboard.html', **data)
+    except ValueError as e:
+        return render_template('dashboard.html',
+                             summary=[],
+                             heatmap={'models': [], 'matrix': []},
+                             file_info={'filename': '错误', 'rows': 0, 'models': 0},
+                             error=str(e))
+    except Exception as e:
+        return render_template('dashboard.html',
+                             summary=[],
+                             heatmap={'models': [], 'matrix': []},
+                             file_info={'filename': '错误', 'rows': 0, 'models': 0},
+                             error=str(e))
+
+
+@app.route('/dashboard/upload', methods=['POST'])
+def dashboard_upload():
+    """处理Dashboard文件上传"""
+    if 'file' not in request.files:
+        flash('请选择文件', 'error')
+        return redirect(url_for('dashboard'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash('请选择文件', 'error')
+        return redirect(url_for('dashboard'))
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        flash('仅支持 .xlsx 或 .xls 文件', 'error')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        file_path = DEFAULT_DATA_PATH
+        file.save(file_path)
+        load_excel_and_compute(file_path=file_path)
+        flash('文件上传成功', 'success')
+        return redirect(url_for('dashboard'))
+    except ValueError as e:
+        flash(f'文件格式错误：{str(e)}', 'error')
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        flash(f'上传失败：{str(e)}', 'error')
+        return redirect(url_for('dashboard'))
 
 
 if __name__ == '__main__':

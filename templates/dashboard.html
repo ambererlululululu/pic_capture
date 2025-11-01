@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型对战分析</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+    <!-- 顶部栏 / 上传区 -->
+    <div class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1>模型对战分析</h1>
+                <p class="file-info">
+                    当前数据来源：{{ file_info.filename }}，行数：{{ file_info.rows }}，模型数：{{ file_info.models }}
+                </p>
+            </div>
+            <div class="header-right">
+                <form action="/dashboard/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+                    <label for="fileInput" class="upload-btn">上传 Excel</label>
+                    <input type="file" id="fileInput" name="file" accept=".xlsx,.xls" style="display: none;" onchange="document.getElementById('uploadForm').submit()">
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash 消息 -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    {% if error %}
+        <div class="flash-messages">
+            <div class="flash flash-error">{{ error }}</div>
+        </div>
+    {% endif %}
+
+    <div class="container">
+        <!-- 梯队区（核心区） -->
+        <div class="tier-section">
+            <div class="tier-controls">
+                <div class="control-group">
+                    <label for="tierScheme">梯队方案：</label>
+                    <select id="tierScheme" onchange="updateTiers()">
+                        <option value="50,40">方案A：>50% / 40-50% / ≤40%</option>
+                        <option value="55,45">方案B：>55% / 45-55% / ≤55%</option>
+                        <option value="60,50">方案C：>60% / 50-60% / ≤50%</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="decimalPlaces">百分比位数：</label>
+                    <select id="decimalPlaces" onchange="updateTiers()">
+                        <option value="1">1位</option>
+                        <option value="2">2位</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tiers-container">
+                <div class="tier-column" id="tier1">
+                    <div class="tier-header tier1-header">
+                        <h2>第一梯队</h2>
+                    </div>
+                    <div class="tier-cards" id="tier1Cards"></div>
+                </div>
+                <div class="tier-column" id="tier2">
+                    <div class="tier-header tier2-header">
+                        <h2>第二梯队</h2>
+                    </div>
+                    <div class="tier-cards" id="tier2Cards"></div>
+                </div>
+                <div class="tier-column" id="tier3">
+                    <div class="tier-header tier3-header">
+                        <h2>第三梯队</h2>
+                    </div>
+                    <div class="tier-cards" id="tier3Cards"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 热力图区 -->
+        <div class="heatmap-section">
+            <div class="heatmap-container">
+                <h2>模型两两胜率（行打列）</h2>
+                <div id="heatmapChart" style="width: 100%; height: 500px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 从模板获取数据
+        const modelData = {{ summary | tojson }};
+        const heatmapData = {{ heatmap | tojson }};
+
+        // 梯队划分函数
+        function splitTiers(data, topTh = 0.5, midTh = 0.4) {
+            const tier1 = [];
+            const tier2 = [];
+            const tier3 = [];
+            
+            data.forEach(m => {
+                if (m.win_rate > topTh) {
+                    tier1.push(m);
+                } else if (m.win_rate > midTh) {
+                    tier2.push(m);
+                } else {
+                    tier3.push(m);
+                }
+            });
+            
+            // 每个梯队内部按胜率降序排序
+            tier1.sort((a, b) => b.win_rate - a.win_rate);
+            tier2.sort((a, b) => b.win_rate - a.win_rate);
+            tier3.sort((a, b) => b.win_rate - a.win_rate);
+            
+            return { tier1, tier2, tier3 };
+        }
+
+        // 渲染卡片
+        function renderCard(model, decimals = 1) {
+            const winRate = (model.win_rate * 100).toFixed(decimals);
+            return `
+                <div class="model-card">
+                    <div class="card-content">
+                        <div class="model-name">${model.model}</div>
+                        <div class="win-rate">${winRate}%</div>
+                        <div class="stats">
+                            胜 ${model.win} / 平 ${model.draw} / 负 ${model.lose} / 总 ${model.games}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 更新梯队显示
+        function updateTiers() {
+            const scheme = document.getElementById('tierScheme').value.split(',');
+            const topTh = parseFloat(scheme[0]) / 100;
+            const midTh = parseFloat(scheme[1]) / 100;
+            const decimals = parseInt(document.getElementById('decimalPlaces').value);
+            
+            const { tier1, tier2, tier3 } = splitTiers(modelData, topTh, midTh);
+            
+            document.getElementById('tier1Cards').innerHTML = tier1.map(m => renderCard(m, decimals)).join('');
+            document.getElementById('tier2Cards').innerHTML = tier2.map(m => renderCard(m, decimals)).join('');
+            document.getElementById('tier3Cards').innerHTML = tier3.map(m => renderCard(m, decimals)).join('');
+        }
+
+        // 初始化梯队（如果有数据）
+        if (modelData && modelData.length > 0) {
+            updateTiers();
+        } else {
+            // 空数据提示
+            document.getElementById('tier1Cards').innerHTML = '<div class="empty-tip">暂无数据，请上传Excel文件</div>';
+            document.getElementById('tier2Cards').innerHTML = '';
+            document.getElementById('tier3Cards').innerHTML = '';
+        }
+
+        // 初始化热力图
+        function initHeatmap() {
+            const chart = echarts.init(document.getElementById('heatmapChart'));
+            
+            const models = heatmapData.models || [];
+            const matrix = heatmapData.matrix || [];
+            
+            if (models.length === 0) {
+                chart.setOption({
+                    title: {
+                        text: '暂无数据，请上传Excel文件',
+                        left: 'center',
+                        top: 'middle',
+                        textStyle: {
+                            color: '#999',
+                            fontSize: 16
+                        }
+                    }
+                });
+                return;
+            }
+            
+            // 转换为 ECharts 格式
+            const data = [];
+            for (let i = 0; i < models.length; i++) {
+                for (let j = 0; j < models.length; j++) {
+                    if (matrix[i] && matrix[i][j] !== null && matrix[i][j] !== undefined) {
+                        data.push([j, i, (matrix[i][j] * 100).toFixed(1)]);
+                    }
+                }
+            }
+            
+            const option = {
+                tooltip: {
+                    position: 'top',
+                    formatter: function(params) {
+                        const rowModel = models[params.data[1]];
+                        const colModel = models[params.data[0]];
+                        const rate = parseFloat(params.data[2]);
+                        return `${rowModel} vs ${colModel}<br/>胜率: ${rate}%`;
+                    }
+                },
+                grid: {
+                    height: '70%',
+                    top: '10%'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: models,
+                    splitArea: {
+                        show: true
+                    },
+                    axisLabel: {
+                        rotate: 45,
+                        interval: 0
+                    }
+                },
+                yAxis: {
+                    type: 'category',
+                    data: models,
+                    splitArea: {
+                        show: true
+                    }
+                },
+                visualMap: {
+                    min: 0,
+                    max: 100,
+                    calculable: true,
+                    orient: 'horizontal',
+                    left: 'center',
+                    bottom: '5%',
+                    inRange: {
+                        color: ['#f87171', '#fbbf24', '#4ade80']
+                    },
+                    text: ['高', '低'],
+                    textStyle: {
+                        color: '#333'
+                    }
+                },
+                series: [{
+                    name: '胜率',
+                    type: 'heatmap',
+                    data: data,
+                    label: {
+                        show: true,
+                        formatter: function(params) {
+                            return params.data[2] + '%';
+                        }
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }]
+            };
+            
+            chart.setOption(option);
+            
+            // 响应式
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        }
+
+        // 初始化热力图（总是调用，函数内部处理空数据）
+        initHeatmap();
+    </script>
+</body>
+</html>
+
