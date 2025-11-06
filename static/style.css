@@ -235,28 +235,236 @@ body {
     margin-top: 4px;
 }
 
+/* 报告卡片通用样式（适合截图） */
+.report-card {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    padding: 32px 40px;
+    margin-bottom: 32px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.report-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.report-card-header h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #6366f1;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.download-btn:hover:not(:disabled) {
+    background: #4f46e5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.download-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.download-btn span {
+    font-size: 16px;
+}
+
+/* 模型排名区 */
+.ranking-section {
+    margin-top: 48px;
+}
+
+.ranking-container {
+    background: #ffffff;
+    overflow-x: auto;
+}
+
+.ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    color: #111827;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #ffffff;
+    letter-spacing: -0.01em;
+    table-layout: fixed;
+}
+
+.ranking-table thead {
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.ranking-table th {
+    padding: 12px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #111827;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 2px solid #e5e7eb;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+.ranking-table th.rank-col {
+    text-align: center;
+}
+
+.ranking-table th.rate-col,
+.ranking-table th.stats-col,
+.ranking-table th.games-col {
+    text-align: right;
+}
+
+.ranking-table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+    height: 42px;
+    transition: background-color 0.15s ease;
+}
+
+.ranking-table tbody tr.odd-row {
+    background-color: #ffffff;
+}
+
+.ranking-table tbody tr.even-row {
+    background-color: #fafafa;
+}
+
+.ranking-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.ranking-table td {
+    padding: 10px 12px;
+    vertical-align: middle;
+    height: 42px;
+}
+
+.rank-col {
+    width: 12%;
+    text-align: center;
+}
+
+.rank-cell {
+    text-align: center;
+}
+
+.model-col {
+    width: 22%;
+    text-align: left;
+}
+
+.rate-col {
+    width: 22%;
+    text-align: right;
+}
+
+.stats-col {
+    width: 22%;
+    text-align: right;
+}
+
+.games-col {
+    width: 22%;
+    text-align: right;
+}
+
+/* 排名奖牌样式 */
+.rank-medal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 11px;
+    color: #111827;
+    background: #f3f4f6;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+.model-cell {
+    font-weight: 500;
+    color: #111827;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    letter-spacing: -0.01em;
+}
+
+.rate-cell {
+    text-align: right;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e3a8a;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+}
+
+.stats-cell {
+    color: #6b7280;
+    font-size: 12px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+    letter-spacing: -0.01em;
+}
+
+.games-cell {
+    color: #6b7280;
+    font-size: 12px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+    letter-spacing: -0.01em;
+}
+
 /* 热力图区 */
 .heatmap-section {
     margin-top: 48px;
 }
 
-.heatmap-container {
-    background: #ffffff;
-    border-radius: 18px;
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
-    padding: 32px;
-}
-
-.heatmap-container h2 {
-    font-size: 24px;
-    font-weight: 600;
-    color: #1d1d1f;
-    margin-bottom: 24px;
-}
-
 #heatmapChart {
     width: 100%;
     min-height: 500px;
+    background: #ffffff;
+    border-radius: 8px;
 }
 
 /* 空数据提示 */

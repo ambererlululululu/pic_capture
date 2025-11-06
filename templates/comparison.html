@@ -188,9 +188,10 @@
 
         .query-display.sticky {
             position: sticky;
-            top: var(--space-4);
+            top: 0;
             z-index: 100;
             box-shadow: var(--elev-3);
+            margin-bottom: 0; /* 确保紧贴下方内容 */
         }
 
         .query-text {
@@ -219,6 +220,58 @@
             align-items: center;
             justify-content: space-between;
             gap: var(--space-4);
+            transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease, padding 0.3s ease;
+            overflow: hidden;
+            max-height: 200px; /* 足够大的初始高度 */
+        }
+
+        .query-display.collapsed .query-nav {
+            max-height: 0 !important;
+            opacity: 0;
+            margin-top: 0;
+            margin-bottom: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .query-display.collapsed {
+            padding: var(--space-2) var(--space-6);
+            margin-bottom: var(--space-2);
+        }
+
+        .query-display.collapsed .query-header-row {
+            margin-bottom: 0 !important;
+        }
+
+        .query-display.collapsed .query-text {
+            margin-bottom: 0;
+        }
+
+        .query-fold-button {
+            background: var(--hover);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: var(--space-1) var(--space-2);
+            cursor: pointer;
+            font-size: var(--fs-12);
+            color: var(--muted);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+        }
+
+        .query-fold-button:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .query-fold-button.collapsed::after {
+            content: '▼';
+        }
+
+        .query-fold-button:not(.collapsed)::after {
+            content: '▲';
         }
 
         .nav-buttons {
@@ -602,6 +655,9 @@
         }
 
         .drag-handle {
+            position: absolute;
+            top: 4px;
+            left: 4px;
             width: 20px;
             height: 20px;
             background: var(--hover);
@@ -617,8 +673,6 @@
             border: 1px solid var(--border);
             user-select: none;
             z-index: 1000;
-            flex-shrink: 0;
-            margin-right: var(--space-2);
         }
 
         .comparison-column:hover .drag-handle {
@@ -641,30 +695,33 @@
             top: 0;
             background: var(--surface);
             margin-bottom: 0;
-            padding: var(--space-4) var(--space-6);
+            padding: var(--space-2) var(--space-6);
+            padding-top: calc(var(--space-2) + 24px); /* 为拖拽把手留空间 */
             border-bottom: 2px solid var(--border);
             flex-shrink: 0;
             z-index: 50;
             backdrop-filter: blur(10px);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: var(--space-3);
-            flex-wrap: wrap;
+            position: sticky; /* sticky 定位，为绝对定位的拖拽把手提供定位上下文 */
         }
         
         /* 当查询区域固定时，调整模型标题的top值 */
         body.query-sticky .column-header-container {
             top: var(--query-sticky-height, 180px); /* 动态计算的查询区域高度 */
+            margin-top: 0; /* 确保紧贴 query display 底部 */
+        }
+
+        /* 当 query-display 固定时，调整 comparison-grid 的位置 */
+        body.query-sticky .comparison-grid {
+            margin-top: 0; /* 确保内容紧贴 query display 底部 */
         }
 
         .column-header {
             font-size: var(--fs-16);
             font-weight: 600;
-            color: var(--brand);
+            color: #000000; /* 黑色 */
             margin: 0;
-            flex-shrink: 0;
+            margin-bottom: var(--space-2);
         }
 
         /* 徽标容器 */
@@ -672,21 +729,73 @@
             display: flex;
             gap: var(--space-2);
             align-items: center;
-            flex-wrap: wrap;
+            justify-content: flex-end;
+            margin-bottom: var(--space-2);
+        }
+        
+        /* 胜率和字数标签 */
+        .win-rate-large { 
+            font-size: var(--fs-14); 
+            font-weight: 600; 
+            margin-left: var(--space-1);
+        }
+        .metric-muted { font-size: var(--fs-14); color: var(--muted); }
+        .badge-label {
+            font-size: var(--fs-12);
+            color: var(--muted);
+            margin-right: var(--space-1);
+        }
+        
+        /* 进度条容器 */
+        .progress-bar-container {
+            width: 100%;
+            height: 4px;
+            background: #e5e7eb; /* 浅灰色背景 */
+            border-radius: 2px;
+            margin: var(--space-2) 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        
+        /* 示例内容预览 */
+        .content-preview {
+            margin-top: var(--space-3);
+            padding-top: var(--space-3);
+            border-top: 1px solid var(--border);
+        }
+        
+        .content-preview-label {
+            font-size: var(--fs-12);
+            color: var(--muted);
+            margin-bottom: var(--space-2);
+        }
+        
+        .content-preview-text {
+            font-size: var(--fs-14);
+            color: var(--text);
+            line-height: var(--lh-1_5);
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         /* 胜率徽标 */
         .win-rate-badge {
-            padding: 3px 6px;
+            padding: 2px 6px;
             border-radius: var(--radius-sm);
             background: #10b981; /* green-500 */
             color: white;
             border: 1px solid #10b981;
-            font-size: var(--fs-10);
+            font-size: var(--fs-12);
             font-weight: 500;
-            line-height: 1;
+            line-height: 1.2;
             user-select: none;
-            box-shadow: var(--elev-1);
             white-space: nowrap;
         }
 
@@ -895,11 +1004,12 @@
 
         <!-- Query Display -->
         <div class="query-display" id="queryDisplay" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div class="query-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <div class="query-text" id="queryText"></div>
                     <div class="query-number" id="queryNumber"></div>
                 </div>
+                <button class="query-fold-button" id="queryFoldButton" onclick="toggleQueryFold()" title="折叠/展开"></button>
             </div>
             <div class="query-nav">
                 <div class="nav-buttons">
@@ -1012,8 +1122,10 @@
                         updateQueryDisplay();
                     }
                 } catch (error) {
-                    alert('文件解析失败，请检查文件格式');
+                    const errorMsg = error && (error.message || String(error)) || '未知错误';
+                    alert('文件解析失败：' + errorMsg + '\n\n请确认为 .xlsx/.xls 格式，且未加密/损坏');
                     console.error('Excel parsing error:', error);
+                    console.error('Error stack:', error.stack);
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -1027,7 +1139,12 @@
             if (autoMode) {
                 // 开启自动模式，清空手动选择的模型
                 clearManualSelection();
+                try {
                 updateComparisonGrid();
+            } catch (err) {
+                console.error('Error in updateComparisonGrid:', err);
+                alert('渲染对比表格时出错：' + (err.message || err));
+            }
             } else {
                 // 关闭自动模式，使用手动选择的模型
                 updateColumnSelection();
@@ -1126,7 +1243,12 @@
                 });
             }
             
-            updateComparisonGrid();
+            try {
+                updateComparisonGrid();
+            } catch (err) {
+                console.error('Error in updateComparisonGrid:', err);
+                alert('渲染对比表格时出错：' + (err.message || err));
+            }
         }
 
         // 显示查询显示区域
@@ -1160,7 +1282,12 @@
             document.getElementById('prevQuery').disabled = currentQueryIndex === 0;
             document.getElementById('nextQuery').disabled = currentQueryIndex >= excelData.length - 2;
             
-            updateComparisonGrid();
+            try {
+                updateComparisonGrid();
+            } catch (err) {
+                console.error('Error in updateComparisonGrid:', err);
+                alert('渲染对比表格时出错：' + (err.message || err));
+            }
         }
 
         // 上一个查询
@@ -1177,6 +1304,33 @@
                 currentQueryIndex++;
                 updateQueryDisplay();
             }
+        }
+
+        // 更新 sticky 高度
+        function updateStickyHeights() {
+            const queryDisplay = document.getElementById('queryDisplay');
+            if (!queryDisplay) return;
+            
+            // 如果 query-display 是 sticky 状态，更新高度
+            if (queryDisplay.classList.contains('sticky')) {
+                const queryHeight = queryDisplay.offsetHeight;
+                document.documentElement.style.setProperty('--query-sticky-height', `${queryHeight}px`);
+            }
+        }
+
+        // 切换查询显示区域的折叠状态
+        function toggleQueryFold() {
+            const queryDisplay = document.getElementById('queryDisplay');
+            const foldButton = document.getElementById('queryFoldButton');
+            if (!queryDisplay || !foldButton) return;
+            
+            queryDisplay.classList.toggle('collapsed');
+            foldButton.classList.toggle('collapsed');
+            
+            // 等待动画完成后更新 sticky 高度
+            setTimeout(() => {
+                updateStickyHeights();
+            }, 300); // 与 CSS transition 时间一致
         }
 
         // 实时搜索函数
@@ -1450,7 +1604,12 @@
             
             // 页面加载时初始化显示框架
             setupColumnSelection();
-            updateComparisonGrid();
+            try {
+                updateComparisonGrid();
+            } catch (err) {
+                console.error('Error in updateComparisonGrid:', err);
+                alert('渲染对比表格时出错：' + (err.message || err));
+            }
             setupStickyQueryDisplay();
         });
 
@@ -1471,7 +1630,8 @@
                     
                     // 动态计算查询区域的实际高度，并更新模型标题的top值
                     const queryHeight = queryDisplay.offsetHeight;
-                    document.documentElement.style.setProperty('--query-sticky-height', `${queryHeight + 20}px`);
+                    // 直接使用 queryHeight，让内容紧贴 query display 底部
+                    document.documentElement.style.setProperty('--query-sticky-height', `${queryHeight}px`);
                 } else {
                     queryDisplay.classList.remove('sticky');
                     document.body.classList.remove('query-sticky');
@@ -1575,10 +1735,10 @@
         // 模型名称缩写映射
         function getDisplayName(modelName) {
             const nameMap = {
-                'ChatGPT': 'GPT',
-                'Deepseek': 'DS',
-                'deepseek': 'DS',
-                'chatgpt': 'GPT'
+                'ChatGPT': 'ChatGPT',
+                'Deepseek': 'Deepseek',
+                'deepseek': 'Deepseek',
+                'chatgpt': 'ChatGPT'
             };
             return nameMap[modelName] || modelName;
         }
@@ -1673,50 +1833,92 @@
                 const headerContainer = document.createElement('div');
                 headerContainer.className = 'column-header-container';
                 
-                // 模型名称（使用缩写）
+                // 创建头部内容区域（flex布局：左侧模型名，右侧胜率字数）
+                const headerContent = document.createElement('div');
+                headerContent.style.display = 'flex';
+                headerContent.style.justifyContent = 'space-between';
+                headerContent.style.alignItems = 'flex-start';
+                headerContent.style.marginBottom = 'var(--space-2)';
+                
+                // 左侧：模型名称
+                const headerLeft = document.createElement('div');
+                headerLeft.style.flex = '1';
+                
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'column-header';
                 headerDiv.textContent = getDisplayName(column.name);
-                headerDiv.title = column.name; // 完整名称作为tooltip
+                headerDiv.title = column.name;
+                headerLeft.appendChild(headerDiv);
+                // 预先计算胜率，供显性化和右侧徽标共用
+                const winRate = getWinRate(column.name, currentQueryIndex);
+                let winRateValue = null;
+                if (winRate) {
+                    winRateValue = parseWinRate(winRate);
+                }
+                // 大号百分比已移除，使用右侧的胜率数字
                 
-                // 徽标容器（放在模型名下方）
-                const badgesContainer = document.createElement('div');
-                badgesContainer.className = 'badges-container';
+                // 右侧：胜率和字数
+                const headerRight = document.createElement('div');
+                headerRight.style.display = 'flex';
+                headerRight.style.gap = 'var(--space-2)';
+                headerRight.style.alignItems = 'center';
                 
                 // 胜率徽标 - 从胜率表获取
-                const winRate = getWinRate(column.name, currentQueryIndex);
-                let winRateBadge = null;
-                if (winRate) {
-                    winRateBadge = document.createElement('div');
-                    winRateBadge.className = 'win-rate-badge';
-                    winRateBadge.textContent = winRate;
-                    winRateBadge.title = '胜率';
-                    badgesContainer.appendChild(winRateBadge);
-                    
-                    // 收集胜率数据
-                    const winRateValue = parseWinRate(winRate);
-                    if (winRateValue !== null) {
-                        winRateBadges.push(winRateBadge);
-                        winRateValues.push(winRateValue);
-                    }
+                // 右侧：胜率数字（无底色）
+                if (winRateValue !== null) {
+                    const winRateLabel = document.createElement('span');
+                    winRateLabel.className = 'badge-label';
+                    winRateLabel.textContent = '胜率';
+                    headerRight.appendChild(winRateLabel);
+                    const winRateText = document.createElement('span');
+                    winRateText.className = 'win-rate-large';
+                    winRateText.textContent = (winRateValue.toFixed(2)) + '%';
+                    // 颜色由后面的渐变色代码统一设置
+                    headerRight.appendChild(winRateText);
+                }
+
+// 字数徽标 - 从字数统计表获取
+                const charCount = getCharCount(column.name, currentQueryIndex) || 0;
+                const countLabel = document.createElement('span');
+                countLabel.className = 'badge-label';
+                countLabel.textContent = '字数';
+                headerRight.appendChild(countLabel);
+                const countText = document.createElement('span');
+                countText.className = 'metric-muted';
+                countText.textContent = String(charCount);
+                headerRight.appendChild(countText);
+
+// 收集胜率数据
+                if (winRateValue !== null) {
+                    winRateValues.push(winRateValue);
                 }
                 
-                // 字数徽标 - 从字数统计表获取
-                const charCount = getCharCount(column.name, currentQueryIndex);
-                const countBadge = document.createElement('div');
-                countBadge.className = 'char-count-badge';
-                countBadge.textContent = charCount ? charCount.toString() : '0';
-                countBadge.title = '字数统计';
-                badgesContainer.appendChild(countBadge);
-                
                 // 收集字数数据
-                charCountBadges.push(countBadge);
+                charCountBadges.push(countText);
                 charCounts.push(charCount || 0);
                 
-                // 组装标题容器（拖拽手柄放在标题容器内，这样滚动时也会固定）
+                headerContent.appendChild(headerLeft);
+                headerContent.appendChild(headerRight);
+                
+                // 组装标题容器
                 headerContainer.appendChild(dragHandle);
-                headerContainer.appendChild(headerDiv);
-                headerContainer.appendChild(badgesContainer);
+                headerContainer.appendChild(headerContent);
+                
+                // 进度条（根据胜率百分比）- 作为分割线
+                const progressContainer = document.createElement('div');
+                progressContainer.className = 'progress-bar-container';
+                const progressBar = document.createElement('div');
+                progressBar.className = 'progress-bar';
+                if (winRateValue !== null) {
+                    progressBar.style.width = Math.max(winRateValue, 1) + '%'; // 至少1%宽度
+                    // 颜色由后面的渐变色代码统一设置，先设为默认色
+                    progressBar.style.background = '#e5e7eb';
+                } else {
+                    progressBar.style.width = '0%';
+                    progressBar.style.background = '#e5e7eb';
+                }
+                progressContainer.appendChild(progressBar);
+                headerContainer.appendChild(progressContainer);
                 
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'column-content';
@@ -1731,31 +1933,31 @@
             // 添加拖拽事件监听器
             setupDragAndDrop();
 
-            // 应用字数渐变色（最小->绿色，最大->红色）
-            if (charCounts.length > 0) {
-                const minChars = Math.min(...charCounts.filter(c => c > 0)); // 排除0
-                const maxChars = Math.max(...charCounts);
-                
-                charCountBadges.forEach((badge, i) => {
-                    const count = charCounts[i];
-                    if (count > 0) {
-                        const color = getGradientColor(count, minChars, maxChars);
-                        badge.style.background = color;
-                        badge.style.borderColor = color;
-                    }
-                });
-            }
+            // 字数现在是灰色纯文本，不需要渐变色
+            // 字数渐变色代码已移除
             
-            // 应用胜率渐变色（最低->绿色，最高->红色）
+            // 应用胜率渐变色（最低->绿色，最高->红色）- 只更新大号百分比颜色
             if (winRateValues.length > 0) {
                 const minRate = Math.min(...winRateValues);
                 const maxRate = Math.max(...winRateValues);
                 
-                winRateBadges.forEach((badge, i) => {
-                    const rate = winRateValues[i];
-                    const color = getGradientColor(rate, minRate, maxRate);
-                    badge.style.background = color;
-                    badge.style.borderColor = color;
+                // 更新每个模型右侧的胜率数字颜色和进度条颜色
+                const columns = document.querySelectorAll('.comparison-column');
+                columns.forEach((column, i) => {
+                    if (i < winRateValues.length) {
+                        const rate = winRateValues[i];
+                        const color = getGradientColor(rate, minRate, maxRate);
+                        // 更新右侧的胜率数字颜色
+                        const winRateText = column.querySelector('.column-header-container .win-rate-large');
+                        if (winRateText) {
+                            winRateText.style.color = color;
+                        }
+                        // 更新进度条颜色
+                        const progressBar = column.querySelector('.progress-bar');
+                        if (progressBar) {
+                            progressBar.style.background = color;
+                        }
+                    }
                 });
             }
         }
@@ -1843,7 +2045,12 @@
                         selectedColumns.splice(targetIndex, 0, draggedColumn);
                         
                         // 重新渲染网格
-                        updateComparisonGrid();
+                        try {
+                updateComparisonGrid();
+            } catch (err) {
+                console.error('Error in updateComparisonGrid:', err);
+                alert('渲染对比表格时出错：' + (err.message || err));
+            }
                     }
                 });
             });
