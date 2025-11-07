@@ -1,1 +1,0 @@
-"use strict";(self.__LOADABLE_LOADED_CHUNKS__=self.__LOADABLE_LOADED_CHUNKS__||[]).push([["81920"],{485079:function(_,e,t){t.r(e),t.d(e,{matcher:function(){return u}});var r=t(413505);let u=()=>r.defaultChatHeaderPlugin}}]);

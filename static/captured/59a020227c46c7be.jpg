@@ -1,1 +1,0 @@
-{"cmd":2260,"sequence_id":"977a1b0b-1432-4b2c-ba48-52b85c601c1f","downlink_body":{"check_message_send_rate_limit_downlink_body":{"is_limit":false,"limit_time":0,"limit_tips":""}},"version":"1","status_code":0,"status_desc":"OK","ext":{"tt_stable":"1"}}

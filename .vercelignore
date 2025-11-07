@@ -1,0 +1,20 @@
+# 排除大文件和不需要部署的目录
+static/captured/
+uploads/
+*.log
+flask.log
+streamlit.log
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.venv/
+*.ipynb
+*.ipynb_checkpoints
+.DS_Store
+node_modules/
+

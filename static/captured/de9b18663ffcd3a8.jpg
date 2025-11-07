@@ -1,1 +1,0 @@
-"use strict";(self.__LOADABLE_LOADED_CHUNKS__=self.__LOADABLE_LOADED_CHUNKS__||[]).push([["65014"],{467208:function(e,r,_){_.r(r),_.d(r,{matcher:function(){return a}});var t=_(492032);let a=e=>{let{threadSelected:r,threadSelectModeScene:_}=e;if(r&&"Share"===_)return t.threadShareChatHeaderPlugin}}}]);
