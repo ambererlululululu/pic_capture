@@ -17,7 +17,11 @@ app = Flask(__name__)
 app.secret_key = 'dashboard_secret_key_2024'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# 在 Vercel 的只读文件系统中，目录可能已经存在或无法创建
+try:
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+except (OSError, PermissionError):
+    pass  # 在只读文件系统中忽略错误
 DEFAULT_DATA_PATH = os.path.join(app.config['UPLOAD_FOLDER'], 'latest.xlsx')
 
 # 简单的内存收集器（仅当前进程内有效）
@@ -802,7 +806,10 @@ def extract_images_rendered():
 
         # 确保本地保存目录存在
         static_dir = Path('static') / 'captured'
-        static_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            static_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError):
+            pass  # 在只读文件系统中忽略错误
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
