@@ -694,6 +694,78 @@ def extract_images():
     
     return jsonify(response_data)
 
+@app.route('/proxy_image')
+def proxy_image():
+    """代理图片，用于绕过 CORS 和 Referer 限制"""
+    try:
+        # 从查询参数获取 URL
+        image_url = request.args.get('url', '')
+        if not image_url:
+            return jsonify({'error': '缺少 url 参数'}), 400
+        
+        # 如果是 base64 编码，先解码
+        try:
+            import base64
+            from urllib.parse import unquote
+            # 先 base64 解码，然后 URL 解码
+            decoded_bytes = base64.b64decode(image_url)
+            image_url = unquote(decoded_bytes.decode('utf-8'))
+        except:
+            # 如果不是 base64，尝试 URL 解码
+            try:
+                from urllib.parse import unquote
+                image_url = unquote(image_url)
+            except:
+                pass  # 如果都失败，直接使用原 URL
+        
+        if not image_url.startswith(('http://', 'https://')):
+            image_url = 'https://' + image_url
+        
+        # 强制使用 HTTPS，解决 Mixed Content 问题
+        if image_url.startswith('http://'):
+            image_url = image_url.replace('http://', 'https://', 1)
+        
+        # 添加 Referer 和 User-Agent 头，模拟浏览器请求
+        # 对于小红书图片，需要更完整的浏览器头
+        headers = {
+            'Referer': 'https://www.xiaohongshu.com/',
+            'Origin': 'https://www.xiaohongshu.com',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Sec-Fetch-Dest': 'image',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': 'cross-site',
+        }
+        
+        response = extractor.session.get(image_url, headers=headers, timeout=15, allow_redirects=True)
+        response.raise_for_status()
+        
+        # 获取内容类型
+        content_type = response.headers.get('content-type', 'image/jpeg')
+        
+        # 使用 send_file 返回图片，并设置 CORS 头
+        from flask import make_response
+        resp = make_response(send_file(
+            io.BytesIO(response.content),
+            mimetype=content_type,
+            max_age=3600
+        ))
+        # 添加 CORS 头，允许跨域访问
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Methods'] = 'GET'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return resp
+    except Exception as e:
+        # 记录错误以便调试
+        import traceback
+        error_msg = f'图片代理失败: {str(e)}\n{traceback.format_exc()}'
+        print(f"代理图片错误: {error_msg}")
+        return jsonify({'error': f'图片代理失败: {str(e)}', 'url': image_url if 'image_url' in locals() else 'unknown'}), 400
+
 @app.route('/download/<path:image_url>')
 def download_image(image_url):
     """下载图片"""

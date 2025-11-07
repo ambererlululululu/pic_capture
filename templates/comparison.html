@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>回答对比</title>
     <style>
         /* ===== 设计令牌系统 ===== */
@@ -1070,13 +1071,19 @@
         let autoMode = true; // 默认开启自动模式
 
         // 文件上传处理
-        document.getElementById('excelFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById('fileName').textContent = file.name;
-                loadExcelFile(file);
-            }
-        });
+        const excelFileInput = document.getElementById('excelFile');
+        if (excelFileInput) {
+            excelFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const fileNameElement = document.getElementById('fileName');
+                    if (fileNameElement) {
+                        fileNameElement.textContent = file.name;
+                    }
+                    loadExcelFile(file);
+                }
+            });
+        }
 
         // 加载Excel文件
         function loadExcelFile(file) {
@@ -1135,6 +1142,7 @@
         // 切换自动模式
         function toggleAutoMode() {
             const autoModeCheckbox = document.getElementById('autoMode');
+            if (!autoModeCheckbox) return;
             autoMode = autoModeCheckbox.checked;
             
             if (autoMode) {
@@ -1254,8 +1262,10 @@
 
         // 显示查询显示区域
         function showQueryDisplay() {
-            document.getElementById('queryDisplay').style.display = 'block';
-            document.getElementById('emptyState').style.display = 'none';
+            const queryDisplay = document.getElementById('queryDisplay');
+            const emptyState = document.getElementById('emptyState');
+            if (queryDisplay) queryDisplay.style.display = 'block';
+            if (emptyState) emptyState.style.display = 'none';
         }
 
         // 更新查询显示
@@ -1275,13 +1285,19 @@
             // 获取第二列的编号（索引1）
             const queryNumber = currentRow[1] || '无编号';
             
-            document.getElementById('queryText').textContent = queryColumn || '无查询内容';
-            document.getElementById('queryNumber').textContent = `编号: ${queryNumber}`;
-            document.getElementById('queryInfo').textContent = `第 ${currentQueryIndex + 1} 个查询，共 ${excelData.length - 1} 个`;
+            const queryText = document.getElementById('queryText');
+            const queryNumberEl = document.getElementById('queryNumber');
+            const queryInfo = document.getElementById('queryInfo');
+            const prevQuery = document.getElementById('prevQuery');
+            const nextQuery = document.getElementById('nextQuery');
+            
+            if (queryText) queryText.textContent = queryColumn || '无查询内容';
+            if (queryNumberEl) queryNumberEl.textContent = `编号: ${queryNumber}`;
+            if (queryInfo) queryInfo.textContent = `第 ${currentQueryIndex + 1} 个查询，共 ${excelData.length - 1} 个`;
             
             // 更新按钮状态
-            document.getElementById('prevQuery').disabled = currentQueryIndex === 0;
-            document.getElementById('nextQuery').disabled = currentQueryIndex >= excelData.length - 2;
+            if (prevQuery) prevQuery.disabled = currentQueryIndex === 0;
+            if (nextQuery) nextQuery.disabled = currentQueryIndex >= excelData.length - 2;
             
             try {
                 updateComparisonGrid();
@@ -2190,7 +2206,83 @@
 
             // 2. 处理图片 - 完全对齐 MarkdownRenderer.tsx
             md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, src) => {
-                return `<img class="markdown-img" alt="${alt}" src="${src}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div data-fallback="img" style="display: none;"><div style="font-size: 24px; margin-bottom: 10px;">🖼️</div><div style="color: #666; margin-bottom: 10px;">图片加载失败</div><div style="font-size: 12px; color: #999; margin-bottom: 10px;">${alt || '图片'}</div><a href="${src}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-size: 14px;">🔗 点击查看原图</a></div>`;
+                // 处理图片 URL：如果是相对路径或没有协议，转换为绝对路径
+                let imageSrc = src.trim();
+                const originalSrc = imageSrc; // 保存原始URL用于调试
+                
+                // 如果已经是完整的 URL（包含 http://、https://、data:、blob:），直接使用
+                if (!imageSrc.match(/^(https?|data|blob):/i)) {
+                    // 如果是相对路径，尝试转换为绝对路径
+                    if (imageSrc.startsWith('//')) {
+                        // 以 // 开头的 URL，添加 https:
+                        imageSrc = 'https:' + imageSrc;
+                    } else if (imageSrc.startsWith('/')) {
+                        // 以 / 开头的绝对路径，使用当前域名
+                        imageSrc = window.location.origin + imageSrc;
+                    } else {
+                        // 相对路径，使用当前页面的基础路径
+                        const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+                        imageSrc = window.location.origin + basePath + imageSrc;
+                    }
+                }
+                
+                // 强制将 HTTP URL 转换为 HTTPS，解决 Mixed Content 警告
+                // 这是关键步骤：Vercel 默认用 HTTPS，浏览器会拦截非安全资源
+                if (imageSrc.startsWith('http://')) {
+                    imageSrc = imageSrc.replace('http://', 'https://');
+                    console.log('HTTP→HTTPS 转换:', originalSrc, '→', imageSrc);
+                }
+                
+                // 对于某些需要代理的域名（如 xiaohongshu.com），使用代理路由
+                // 检查是否包含小红书相关的域名或路径
+                const xiaohongshuKeywords = [
+                    'ci.xiaohongshu.com', 
+                    'sns-webpic-qc.xhscdn.com', 
+                    'xhscdn.com',
+                    'xiaohongshu.com',
+                    'xhscdn',
+                    'notes_pre_post',  // 小红书笔记图片路径
+                    '1040g'  // 小红书图片ID前缀
+                ];
+                
+                // 检查URL是否包含小红书相关的关键词
+                const shouldProxy = xiaohongshuKeywords.some(keyword => {
+                    return imageSrc.toLowerCase().includes(keyword.toLowerCase());
+                });
+                
+                if (shouldProxy) {
+                    // 使用代理路由，将 URL 进行 base64 编码
+                    // 注意：代理路由在 Vercel 上通过 api/proxy_image.js (Node.js Serverless) 处理
+                    // 服务器端会添加 Referer、User-Agent 等请求头，绕过防盗链限制
+                    try {
+                        const encodedUrl = btoa(encodeURIComponent(imageSrc));
+                        const proxyUrl = window.location.origin + '/proxy_image?url=' + encodedUrl;
+                        console.log('使用代理加载图片:', {
+                            original: originalSrc,
+                            processed: imageSrc,
+                            proxy: proxyUrl.substring(0, 100) + '...'
+                        });
+                        imageSrc = proxyUrl;
+                    } catch (e) {
+                        // 如果编码失败，使用原始 URL
+                        console.warn('URL 编码失败，使用原始 URL:', e, {
+                            original: originalSrc,
+                            processed: imageSrc
+                        });
+                    }
+                } else {
+                    // 如果不是小红书图片，也记录一下
+                    if (originalSrc.includes('1040g') || originalSrc.includes('xiaohongshu')) {
+                        console.warn('检测到可能的小红书图片，但未使用代理:', {
+                            original: originalSrc,
+                            processed: imageSrc
+                        });
+                    }
+                }
+                
+                // 注意：不添加 crossorigin 属性，因为某些图片服务器可能不支持 CORS
+                // 如果图片加载失败，会显示 fallback div
+                return `<img class="markdown-img" alt="${alt}" src="${imageSrc}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; console.error('图片加载失败:', '${imageSrc.substring(0, 100)}...');"><div data-fallback="img" style="display: none;"><div style="font-size: 24px; margin-bottom: 10px;">🖼️</div><div style="color: #666; margin-bottom: 10px;">图片加载失败</div><div style="font-size: 12px; color: #999; margin-bottom: 10px;">${alt || '图片'}</div><a href="${imageSrc}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-size: 14px;">🔗 点击查看原图</a></div>`;
             });
 
             // 3. 处理链接（图片分组将在最后用 DOM 后处理）
