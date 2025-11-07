@@ -981,6 +981,12 @@
         .markdown-pre{background:var(--hover);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--space-4);margin:var(--space-4) 0;overflow-x:auto;font-family:ui-monospace,Menlo,monospace;font-size:0.9em;line-height:var(--lh-1_6)}
         .markdown-code-block{background:transparent;padding:0;border:none;color:#4a4a4f;white-space:pre-wrap}
         .markdown-img{max-width:100%;height:auto;border-radius:var(--radius-md);margin:var(--space-4) 0;display:block}
+        .markdown-img-scroll-container{width:100%;overflow-x:auto;overflow-y:hidden;margin:var(--space-4) 0;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;padding:0;box-sizing:border-box}
+        .markdown-img-scroll-container::-webkit-scrollbar{display:none}
+        .markdown-img-scroll-container-inner{display:flex;flex-direction:row;gap:8px;padding:0;width:max-content}
+        .markdown-img-scroll-item{flex-shrink:0;scroll-snap-align:start;box-sizing:border-box;display:flex;flex-direction:column;width:160px;height:160px}
+        .markdown-img-scroll-item img{width:100%;height:100%;object-fit:cover;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1);display:block;margin:0;aspect-ratio:1/1}
+        .markdown-img-scroll-item div[data-fallback="img"]{width:100%;height:100%;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1);display:flex;flex-direction:column;justify-content:center;align-items:center;border:2px dashed #ddd;background:#f8f9fa;padding:20px;box-sizing:border-box;margin:0;aspect-ratio:1/1}
     </style>
 </head>
 <body>
@@ -1285,11 +1291,47 @@
             }
         }
 
+        // 计算性滚动到答案区顶部（考虑 sticky 高度）
+        function scrollAnswersToTop() {
+            const queryDisplay = document.getElementById('queryDisplay');
+            const grid = document.getElementById('comparisonGrid');
+            if (!queryDisplay || !grid) return;
+
+            // 如果 queryDisplay 处于 sticky 状态，用它的实际高度做偏移
+            // 或者使用 CSS 变量中的高度（更稳定）
+            const stickyHeight = getComputedStyle(document.documentElement)
+                .getPropertyValue('--query-sticky-height')
+                .trim()
+                .replace('px', '') || 0;
+            const stickyOffset = stickyHeight ? parseInt(stickyHeight) : 
+                (queryDisplay.classList.contains('sticky') ? queryDisplay.offsetHeight : 0);
+
+            // 目标位置 = comparisonGrid 相对视口的 top + 当前滚动量 - sticky 高度 - 一点点内边距
+            const targetY = window.scrollY + grid.getBoundingClientRect().top - stickyOffset - 8;
+
+            // 用两帧 RAF，确保 DOM 渲染完再滚动（比 setTimeout(0) 更稳）
+            requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                    window.scrollTo({ top: Math.max(targetY, 0), behavior: 'auto' });
+                    // 重置横向图廊的滚动位置
+                    resetHorizontalGalleries();
+                })
+            );
+        }
+
+        // 重置横向图廊的滚动位置
+        function resetHorizontalGalleries() {
+            document.querySelectorAll('.markdown-img-scroll-container').forEach(sc => {
+                sc.scrollLeft = 0;
+            });
+        }
+
         // 上一个查询
         function previousQuery() {
             if (currentQueryIndex > 0) {
                 currentQueryIndex--;
                 updateQueryDisplay();
+                scrollAnswersToTop();
             }
         }
 
@@ -1298,6 +1340,7 @@
             if (currentQueryIndex < excelData.length - 2) {
                 currentQueryIndex++;
                 updateQueryDisplay();
+                scrollAnswersToTop();
             }
         }
 
@@ -1811,6 +1854,7 @@
             const charCounts = [];
             const winRateBadges = [];
             const winRateValues = [];
+            const winRateMap = new Map(); // 模型名 -> 胜率值的映射
 
             columnsToShow.forEach((column, index) => {
                 const columnDiv = document.createElement('div');
@@ -1894,6 +1938,7 @@
 // 收集胜率数据
                 if (winRateValue !== null) {
                     winRateValues.push(winRateValue);
+                    winRateMap.set(column.name, winRateValue); // 存入映射
                 }
                 
                 // 收集字数数据
@@ -1954,6 +1999,49 @@
                 const content = currentRow[column.index] || '';
                 contentDiv.innerHTML = renderMarkdown(content);
                 
+                // 调整图片滚动容器的宽度（1:1比例，固定160px）
+                const adjustImageScrollContainers = () => {
+                    const scrollContainers = contentDiv.querySelectorAll('.markdown-img-scroll-container');
+                    scrollContainers.forEach(container => {
+                        if (container.offsetWidth === 0) return; // 如果容器宽度为0，跳过
+                        
+                        // 图片固定为160px宽度和高度（1:1比例）
+                        const itemWidth = 160;
+                        
+                        const items = container.querySelectorAll('.markdown-img-scroll-item');
+                        items.forEach(item => {
+                            item.style.width = `${itemWidth}px`;
+                            item.style.minWidth = `${itemWidth}px`;
+                            item.style.maxWidth = `${itemWidth}px`;
+                        });
+                    });
+                };
+                
+                // 立即调整一次
+                setTimeout(adjustImageScrollContainers, 0);
+                
+                // 监听图片加载完成，重新调整
+                const images = contentDiv.querySelectorAll('.markdown-img-scroll-item img');
+                images.forEach(img => {
+                    if (img.complete) {
+                        adjustImageScrollContainers();
+                    } else {
+                        img.addEventListener('load', adjustImageScrollContainers, { once: true });
+                        img.addEventListener('error', adjustImageScrollContainers, { once: true });
+                    }
+                });
+                
+                // 监听窗口大小变化
+                const scrollContainers = contentDiv.querySelectorAll('.markdown-img-scroll-container');
+                if (scrollContainers.length > 0) {
+                    const resizeObserver = new ResizeObserver(() => {
+                        adjustImageScrollContainers();
+                    });
+                    scrollContainers.forEach(container => {
+                        resizeObserver.observe(container);
+                    });
+                }
+                
                 columnDiv.appendChild(headerContainer);
                 columnDiv.appendChild(contentDiv);
                 grid.appendChild(columnDiv);
@@ -1972,19 +2060,25 @@
                 
                 // 更新每个模型右侧的胜率数字颜色和进度条颜色
                 const columns = document.querySelectorAll('.comparison-column');
-                columns.forEach((column, i) => {
-                    if (i < winRateValues.length) {
-                        const rate = winRateValues[i];
-                        const color = getGradientColor(rate, minRate, maxRate);
-                        // 更新右侧的胜率数字颜色
-                        const winRateText = column.querySelector('.column-header-container .win-rate-large');
-                        if (winRateText) {
-                            winRateText.style.color = color;
-                        }
-                        // 更新进度条颜色
-                        const progressBar = column.querySelector('.progress-bar');
-                        if (progressBar) {
-                            progressBar.style.background = color;
+                columns.forEach((column) => {
+                    // 从 dataset 或 header 中获取模型名
+                    const columnIndex = parseInt(column.dataset.columnIndex);
+                    if (columnIndex >= 0 && columnIndex < columnsToShow.length) {
+                        const modelName = columnsToShow[columnIndex].name;
+                        const rate = winRateMap.get(modelName);
+                        
+                        if (rate !== undefined) {
+                            const color = getGradientColor(rate, minRate, maxRate);
+                            // 更新右侧的胜率数字颜色
+                            const winRateText = column.querySelector('.column-header-container .win-rate-large');
+                            if (winRateText) {
+                                winRateText.style.color = color;
+                            }
+                            // 更新进度条颜色
+                            const progressBar = column.querySelector('.progress-bar');
+                            if (progressBar) {
+                                progressBar.style.background = color;
+                            }
                         }
                     }
                 });
@@ -2096,33 +2190,10 @@
 
             // 2. 处理图片 - 完全对齐 MarkdownRenderer.tsx
             md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, src) => {
-                return `<img class="markdown-img" alt="${alt}" src="${src}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                  <div style="display: none; border: 2px dashed #ddd; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; margin: 10px 0;">
-                    <div style="font-size: 24px; margin-bottom: 10px;">🖼️</div>
-                    <div style="color: #666; margin-bottom: 10px;">图片加载失败</div>
-                    <div style="font-size: 12px; color: #999; margin-bottom: 10px;">${alt || '图片'}</div>
-                    <a href="${src}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-size: 14px;">
-                      🔗 点击查看原图
-                    </a>
-                  </div>`;
+                return `<img class="markdown-img" alt="${alt}" src="${src}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div data-fallback="img" style="display: none;"><div style="font-size: 24px; margin-bottom: 10px;">🖼️</div><div style="color: #666; margin-bottom: 10px;">图片加载失败</div><div style="font-size: 12px; color: #999; margin-bottom: 10px;">${alt || '图片'}</div><a href="${src}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-size: 14px;">🔗 点击查看原图</a></div>`;
             });
 
-            // 3. 处理多图片横向布局 - 完全对齐 MarkdownRenderer.tsx
-            md = md.replace(/<p>((?:<img[^>]*>[\s]*)+)<\/p>/g, function(match, images) {
-                const imgMatches = images.match(/<img[^>]*>/g);
-                if (!imgMatches || imgMatches.length < 2) return match;
-
-                const imageCount = imgMatches.length;
-                const imageWidth = imageCount === 2 || imageCount === 4
-                    ? 'calc(50% - 0.25rem)'
-                    : 'calc(33.333% - 0.34rem)';
-
-                const wrappedImages = imgMatches.map(img =>
-                    `<div style="width: ${imageWidth}; flex-shrink: 0;">${img}</div>`
-                ).join('');
-
-                return `<div style="display: flex; flex-wrap: wrap; margin-bottom: 16px; gap: 0.5rem;">${wrappedImages}</div>`;
-            });
+            // 3. 处理链接（图片分组将在最后用 DOM 后处理）
 
             // 4. 处理链接
             md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
@@ -2297,11 +2368,214 @@
             });
 
             // 13. 处理段落 - 完全对齐 MarkdownRenderer.tsx
-            return md.split(/\n/).map(line => {
-                if (/^<h\d|^<ul>|^<ol>|^<pre>|^<blockquote>|^<img|^<table|^<hr|^<div|^<code/.test(line)) return line;
-                if (!line.trim()) return '';
-                return `<p class="markdown-p">${line}</p>`;
+            md = md.split(/\n/).map(line => {
+                const t = line.trimStart(); // 忽略行首空白
+                if (/^<(h\d|ul|ol|pre|blockquote|img|table|hr|div|code)\b/.test(t)) return t;
+                if (!t.trim()) return '';
+                return `<p class="markdown-p">${t}</p>`;
             }).join('\n');
+            
+            // 14. DOM 后处理：把相邻图片（允许中间跟着 fallback div）合并成横滑容器
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = md;
+            
+            // 先处理：把只含图片（和可选 fallback div）的段落 <p> 拆掉（unwrap）
+            (function unwrapImageParagraphs(root) {
+                // 递归处理所有节点
+                const processNode = (node) => {
+                    // 先递归处理子节点
+                    const children = Array.from(node.children);
+                    children.forEach(child => {
+                        processNode(child);
+                    });
+                    
+                    // 检查当前节点是否是段落
+                    if (node.tagName === 'P' && node.parentNode) {
+                        const p = node;
+                        const pChildren = Array.from(p.childNodes);
+                        let hasOnlyImages = true;
+                        let imageNodes = [];
+                        
+                        for (let j = 0; j < pChildren.length; j++) {
+                            const child = pChildren[j];
+                            // 检查子节点是否还在段落中
+                            if (!child.parentNode || child.parentNode !== p) continue;
+                            
+                            if (child.nodeType === 1) { // Element node
+                                if (child.tagName === 'IMG' && child.classList.contains('markdown-img')) {
+                                    imageNodes.push(child);
+                                    // 检查下一个节点是否是 fallback div
+                                    if (j + 1 < pChildren.length) {
+                                        const next = pChildren[j + 1];
+                                        if (next && next.parentNode === p && next.nodeType === 1 && next.tagName === 'DIV' && 
+                                            next.getAttribute('data-fallback') === 'img') {
+                                            imageNodes.push(next);
+                                            j++; // 跳过 fallback div
+                                        }
+                                    }
+                                } else if (!(child.tagName === 'DIV' && child.getAttribute('data-fallback') === 'img')) {
+                                    // 有其他元素节点（不是 fallback div）
+                                    hasOnlyImages = false;
+                                    break;
+                                }
+                            } else if (child.nodeType === 3 && child.textContent.trim()) {
+                                // 有非空白文本节点
+                                hasOnlyImages = false;
+                                break;
+                            }
+                        }
+                        
+                        // 如果段落只包含图片，就拆掉段落标签
+                        if (hasOnlyImages && imageNodes.length > 0) {
+                            const parent = p.parentNode;
+                            if (parent) {
+                                imageNodes.forEach(n => {
+                                    if (n.parentNode === p && p.parentNode === parent) {
+                                        parent.insertBefore(n, p);
+                                    }
+                                });
+                                if (p.parentNode === parent) {
+                                    parent.removeChild(p);
+                                }
+                            }
+                        } else {
+                            // 如果段落只包含 fallback(div[data-fallback="img"]) 也拆掉
+                            const nodes = Array.from(p.childNodes).filter(n => n.nodeType === 1 && n.parentNode === p);
+                            const onlyFallback = nodes.length === 1 && 
+                                nodes[0].tagName === 'DIV' && 
+                                nodes[0].getAttribute('data-fallback') === 'img';
+                            if (onlyFallback) {
+                                const parent = p.parentNode;
+                                if (parent && nodes[0].parentNode === p) {
+                                    parent.insertBefore(nodes[0], p);
+                                    if (p.parentNode === parent) {
+                                        parent.removeChild(p);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+                
+                processNode(root);
+            })(wrapper);
+            
+            // 递归处理所有节点，把相邻图片分组
+            (function groupConsecutiveImages(root) {
+                let nodes = Array.from(root.childNodes);
+                let i = 0;
+                
+                while (i < nodes.length) {
+                    let start = i;
+                    let group = [];
+                    
+                    // 收集一个图片项：img + 可选的 fallback div
+                    function collectOneItem(idx) {
+                        if (idx >= nodes.length) return null;
+                        const img = nodes[idx];
+                        if (!(img && img.nodeType === 1 && img.tagName === 'IMG' && img.classList.contains('markdown-img'))) {
+                            return null;
+                        }
+                        const item = [img];
+                        
+                        // 检查下一个节点是否是 fallback div
+                        if (idx + 1 < nodes.length) {
+                            const maybeFallback = nodes[idx + 1];
+                            if (maybeFallback && maybeFallback.nodeType === 1 && 
+                                maybeFallback.tagName === 'DIV' && 
+                                maybeFallback.getAttribute('data-fallback') === 'img') {
+                                item.push(maybeFallback);
+                            }
+                        }
+                        return item;
+                    }
+                    
+                    // 尝试收集连续的多项
+                    while (true) {
+                        const item = collectOneItem(i);
+                        if (!item) break;
+                        
+                        group.push(item);
+                        i += item.length;
+                        
+                        // 允许中间有纯空白文本节点
+                        while (i < nodes.length && nodes[i].nodeType === 3 && !nodes[i].textContent.trim()) {
+                            i++;
+                        }
+                        
+                        // 检查下一项
+                        const nextItem = collectOneItem(i);
+                        if (!nextItem) break;
+                    }
+                    
+                    if (group.length >= 2) {
+                        // 构造横滑容器
+                        const sc = document.createElement('div');
+                        sc.className = 'markdown-img-scroll-container';
+                        const inner = document.createElement('div');
+                        inner.className = 'markdown-img-scroll-container-inner';
+                        sc.appendChild(inner);
+                        
+                        group.forEach(item => {
+                            const slot = document.createElement('div');
+                            slot.className = 'markdown-img-scroll-item';
+                            
+                            // 移入 img 和它的 fallback
+                            item.forEach(n => {
+                                // 去掉单图样式 margin，交给容器控制
+                                if (n.tagName === 'IMG') {
+                                    n.classList.remove('markdown-img');
+                                }
+                                slot.appendChild(n);
+                            });
+                            
+                            inner.appendChild(slot);
+                        });
+                        
+                        // 用容器替换这段节点
+                        let before = nodes[start];
+                        // 找到第一个仍在 root 下的参照节点
+                        while (before && before.parentNode !== root) {
+                            start++;
+                            if (start < nodes.length) {
+                                before = nodes[start];
+                            } else {
+                                before = null;
+                                break;
+                            }
+                        }
+                        if (before && before.parentNode === root) {
+                            root.insertBefore(sc, before);
+                        } else {
+                            root.appendChild(sc);
+                        }
+                        
+                        // 删除被分组的旧节点（只删还在 root 下的）
+                        group.flat().forEach(n => {
+                            if (n.parentNode === root) {
+                                root.removeChild(n);
+                            }
+                        });
+                        
+                        // 重新抓取节点列表并继续
+                        nodes = Array.from(root.childNodes);
+                        const scIndex = nodes.indexOf(sc);
+                        i = scIndex + 1;
+                    } else {
+                        i++;
+                    }
+                }
+                
+                // 递归处理子节点（处理段落内的图片）
+                Array.from(root.children).forEach(child => {
+                    if (child.tagName !== 'DIV' || !child.classList.contains('markdown-img-scroll-container')) {
+                        groupConsecutiveImages(child);
+                    }
+                });
+            })(wrapper);
+            
+            // 返回最终 HTML
+            return wrapper.innerHTML;
         }
 
         // HTML转义函数
