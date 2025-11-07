@@ -7,6 +7,6 @@ gunicorn==21.2.0
 pandas>=2.0.0
 openpyxl>=3.0.0
 
-# For rendered page extraction
-playwright>=1.40.0
+# For rendered page extraction (not available on Vercel due to size limit)
+# playwright>=1.40.0
 

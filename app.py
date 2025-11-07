@@ -792,7 +792,10 @@ def extract_images_rendered():
 
     try:
         # 延迟导入，避免未安装时报错阻断其他接口
-        from playwright.sync_api import sync_playwright
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            return jsonify({'error': 'Playwright is not available on this server. This feature requires playwright to be installed.'}), 503
 
         collected_urls = set()
         saved_local_urls = set()
